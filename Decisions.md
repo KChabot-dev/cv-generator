@@ -10,11 +10,11 @@ Pydantic is the preferred implementation for these models.
 
 Major models are expected to include:
 
-- `CandidateProfile`
-- `JobSpec`
-- `EvidenceMap`
-- `CVContentPlan`
-- `CVDraft`
+* `CandidateProfile`
+* `JobSpec`
+* `EvidenceMap`
+* `CVContentPlan`
+* `CVDraft`
 
 JSON will be used as a serialized representation when intermediate artifacts need to be stored, inspected, tested, or exchanged.
 
@@ -22,9 +22,9 @@ JSON will be used as a serialized representation when intermediate artifacts nee
 
 The CV Generator consists of multiple stages that exchange structured information. Explicit models provide clearer contracts between these stages than unstructured dictionaries.
 
-Pydantic provides runtime data validation and can generate structured schemas that integrate directly with OpenAI Structured Outputs.
+Pydantic provides runtime data validation and can generate JSON Schemas from the application's data models.
 
-This allows the same conceptual data contract to be used by both the Python application and AI-generated structured outputs.
+This allows the same conceptual data contracts to be used by the Python application and by AI components that support schema-constrained structured outputs.
 
 ### Important Limitation
 
@@ -32,7 +32,9 @@ Schema validation ensures that data has the expected structure and types.
 
 It does not guarantee that AI-generated content is factually or semantically correct.
 
-The validation gates defined in `Architecture.md` remain responsible for verifying evidence, meaning, and business rules.
+The validation gates defined in `Architecture.md` remain responsible for verifying evidence, meaning, provenance, and business rules.
+
+---
 
 ## D002 — Persist Intermediate Pipeline Artifacts
 
@@ -79,45 +81,74 @@ Intermediate artifacts are primarily intended to improve observability, debuggin
 
 If later testing shows that persisting a particular artifact provides no practical value, it does not need to be retained permanently.
 
-## D003 — AI Structured Outputs
+---
+
+## D003 — Schema-Constrained AI Outputs
 
 ### Decision
 
-Use OpenAI Structured Outputs for AI pipeline stages that are expected to produce structured application data.
+Require AI pipeline stages that produce structured application data to return outputs conforming to predefined schemas.
 
-The expected output structure will be defined using the application's Pydantic models.
+The application's Pydantic models will define the expected data structures and will be used to generate the corresponding JSON Schemas.
+
+For the initial Codex-based implementation, these schemas will be supplied to Codex when structured output is required.
 
 ### Rationale
 
 Pipeline stages such as Job Analysis, Evidence Matching, CV Planning, and CV Writing need to exchange predictable structured data.
 
-Allowing AI models to invent arbitrary dictionaries or free-form JSON would make downstream processing unreliable.
-
-Structured Outputs allows the application to require AI responses that conform to predefined schemas.
+Allowing the AI system to invent arbitrary dictionaries, field names, or free-form JSON would make downstream processing unreliable.
 
 Conceptually:
 
 ```text
 Pydantic Model
       ↓
-Structured Output Schema
+JSON Schema
       ↓
-OpenAI Model
+AI Execution Backend
       ↓
-Structured Response
+Schema-Constrained Response
       ↓
 Pydantic Validation
 ```
 
-This ensures structural consistency across repeated AI calls and allows downstream pipeline components to rely on known data contracts.
+This ensures structural consistency across repeated AI calls and allows downstream components to rely on known data contracts.
+
+It also keeps the application's internal models independent from a specific AI provider or execution mechanism.
+
+### Initial Implementation
+
+The initial implementation will use Codex as the AI execution backend.
+
+Codex can receive a JSON Schema when structured output is required, allowing the application to request results that conform to the application's expected data structure.
+
+The resulting structured response will subsequently be validated by Pydantic before being accepted by the Python application.
 
 ### Important Limitation
 
-Structured Outputs guarantees adherence to the expected structure, not factual or semantic correctness.
+Schema-constrained output guarantees adherence to the expected structure, not factual or semantic correctness.
 
-A structurally valid output may still contain an incorrect interpretation.
+For example, the following could be structurally valid:
 
-Semantic validation, provenance checks, evidence rules, and other validation mechanisms defined in the architecture remain necessary.
+```text
+Skill: Python
+Requirement Type: Required
+Expected Level: Expert
+```
+
+while still being semantically incorrect if the original job posting never stated or implied expert-level proficiency.
+
+The validation gates defined in `Architecture.md` therefore remain responsible for verifying:
+
+* semantic correctness;
+* source grounding;
+* provenance;
+* evidence strength;
+* factual fidelity;
+* other application-specific rules.
+
+---
 
 ## D004 — Professional Portfolio Access Strategy
 
@@ -193,7 +224,7 @@ The system should load the curated Professional Portfolio documentation relevant
 * documented code audits;
 * other evidence-oriented Markdown documents.
 
-Raw source code, binary files, and unrelated repository content should not automatically be included.
+Raw source code, binary files, generated files, and unrelated repository content should not automatically be included.
 
 The curated Markdown documentation remains the primary evidence layer.
 
@@ -203,6 +234,20 @@ Portfolio documents must retain stable identifiers or source references when pro
 
 Every proposed evidence match should therefore be traceable back to the document or documents from which it originated.
 
+Conceptually:
+
+```text
+Job Requirement
+      ↓
+Evidence Match
+      ↓
+Portfolio Document
+      ↓
+Supporting Passage
+```
+
+The Evidence Matcher should not produce an evidence claim that cannot be associated with identifiable source material.
+
 ### Future Evolution
 
 Full-context processing is an initial strategy, not a permanent architectural requirement.
@@ -210,7 +255,7 @@ Full-context processing is an initial strategy, not a permanent architectural re
 If evaluation later shows that the portfolio becomes:
 
 * too large for efficient full-context processing;
-* too expensive to repeatedly process;
+* too resource-intensive or inefficient to repeatedly process;
 * difficult for the model to reason over reliably;
 * slow enough to affect practical use;
 
@@ -224,9 +269,93 @@ the access strategy may be replaced or supplemented with retrieval techniques su
 
 A more complex retrieval system should be introduced only when testing demonstrates that it improves the system over the simpler full-context baseline.
 
+### Future Local-LLM Extension
+
+A later version of the project may introduce a local LLM and local retrieval pipeline.
+
+This could provide an opportunity to explore technologies and concepts such as:
+
+* local model inference;
+* embeddings;
+* semantic retrieval;
+* hierarchical document indexing;
+* context construction;
+* hybrid search;
+* local structured outputs;
+* evaluation of local models against the Codex-based baseline.
+
+This extension is not required for the initial CV Generator version and should not delay delivery of a usable V1.
+
 ### Design Principle
 
 Do not introduce retrieval infrastructure simply because the application resembles a RAG system.
 
 Use the simplest portfolio-access strategy that reliably exposes the evidence required for accurate matching.
 
+More complex retrieval or local-LLM infrastructure should be introduced when it solves a demonstrated problem or provides a clearly defined learning objective.
+## D005 — AI Execution Backend
+
+### Decision
+
+Use Codex authenticated through the user's ChatGPT subscription as the primary AI execution backend for the initial version of the CV Generator.
+
+The Python application should access Codex through a dedicated application-level adapter rather than allowing Codex-specific logic to spread throughout the pipeline.
+
+Conceptually:
+
+```text
+CV Generator
+      ↓
+LLM / AI Backend Interface
+      ↓
+Codex Adapter
+      ↓
+Codex
+```
+
+The initial Codex adapter may use either the official Codex Python SDK or the non-interactive Codex CLI, depending on which provides the simplest reliable support for the required structured-output workflow.
+
+### Authentication
+
+Codex will use ChatGPT-account authentication for normal local operation.
+
+This allows the CV Generator to use Codex within the usage available through the user's ChatGPT subscription rather than requiring usage-based OpenAI API-key billing.
+
+API-key authentication is not a requirement for normal V1 operation.
+
+### Rationale
+
+Separating the AI execution backend from the rest of the application prevents the CV-generation pipeline from depending directly on one execution mechanism.
+
+Pipeline components should request capabilities such as structured generation without needing to know whether the underlying implementation uses:
+
+* the Codex Python SDK;
+* `codex exec`;
+* a future local LLM;
+* another compatible AI backend.
+
+This makes the system easier to test, maintain, and extend.
+
+### Initial Backend Evaluation
+
+Before finalizing the Codex adapter implementation, compare the Codex Python SDK and `codex exec` for the specific needs of the project, including:
+
+* schema-constrained structured output;
+* Pydantic integration;
+* error handling;
+* authentication reuse;
+* observability;
+* testability;
+* implementation complexity.
+
+Prefer the simplest option that satisfies the application's requirements.
+
+### Future Extension
+
+A later `LocalLLMProvider` or equivalent backend may be added without changing the domain-level CV-generation pipeline.
+
+This future backend could support local inference, retrieval, embeddings, and comparison against the Codex-based baseline.
+
+### Design Principle
+
+Pipeline logic should depend on the capabilities required from an AI backend, not directly on provider-specific implementation details.

@@ -6,51 +6,71 @@ The CV Generator transforms a job posting and the Professional Portfolio into a 
 
 ### Inputs
 
-* Job posting
-* Professional Portfolio
+- Job posting
+- Professional Portfolio
 
-### Output
+### Primary Output
 
-* Tailored CV in PDF format
+- Tailored CV in PDF format
 
 The Professional Portfolio serves two distinct purposes:
 
-1. **Evidence source** — documented skills, experiences, projects, accomplishments, and supporting material used to determine what can truthfully be claimed.
-2. **Canonical candidate data** — stable factual information such as name, contact information, education, official titles, organizations, dates, and languages.
+1. **Evidence source** — documented skills, experiences, projects, accomplishments, code audits, and supporting material used to determine what can truthfully be claimed.
+
+2. **Canonical candidate data** — stable factual information such as name, contact information, education, official titles, organizations, dates, professional links, and languages.
 
 These two types of information should not be treated in the same way.
 
+Canonical information should normally be retrieved deterministically.
+
+Professional evidence may require semantic interpretation, aggregation, and validation.
+
 ---
 
-## High-Level Pipeline
+# High-Level Pipeline
 
 ```text
                          PROFESSIONAL PORTFOLIO
                            /               \
                           /                 \
                          ↓                   ↓
-               Candidate Profile       Evidence Source
+                Candidate Profile       Evidence Source
                          │                   │
                          │                   │
 JOB POSTING              │                   │
     ↓                    │                   │
 Job Analysis             │                   │
     ↓                    │                   │
+JobSpec                  │                   │
+    ↓                    │                   │
+JobSpec Validation       │                   │
+    ↓                    │                   │
 Validated JobSpec        │                   │
     │                    │                   │
     └──────────────→ Evidence Matching ←─────┘
                          ↓
+                Candidate Evidence Map
+                         ↓
+                Evidence Validation
+                         ↓
                 Validated Evidence Map
                          ↓
                     CV Planning
+                         ↑
+                         │
+                 Candidate Profile
+                         │
                          ↓
                   CV Content Plan
                          ↓
-                     CV Writing
+                    CV Writing
                          ↓
                 Tailored CV Content
                          ↓
 Candidate Profile ─→ CV Draft Assembly
+                         ↑
+                         │
+                  CV Content Plan
                          ↓
                 Structured CV Draft
                          ↓
@@ -58,28 +78,121 @@ Candidate Profile ─→ CV Draft Assembly
                          ↓
                  Validated CV Draft
                          ↓
-                Document Rendering
+                    Render Adapter
                          ↓
-                   Validated PDF
+                      Renderer
+                         ↓
+                      CV PDF
+                         ↓
+               Document Validation
                          ↓
                      FINAL CV
 ```
 
 The pipeline separates:
 
-* understanding the job;
-* identifying supporting evidence;
-* deciding what should appear in the CV;
-* writing targeted professional content;
-* inserting canonical candidate information;
-* validating factual fidelity;
-* rendering the final document.
+- understanding the employer;
+- identifying candidate evidence;
+- determining what capability the combined evidence actually demonstrates;
+- comparing that demonstrated capability with individual job requirements;
+- deciding what deserves space in the CV;
+- writing targeted professional content;
+- inserting canonical candidate information;
+- validating factual fidelity;
+- rendering and validating the final document.
 
 Each stage has a specific responsibility and should not perform work that belongs to another stage.
 
 ---
 
-## 1. Job Analysis
+# Relationship to Data Models
+
+This document describes:
+
+> how the system is organized and how information moves through it.
+
+`Data-Models.md` describes:
+
+> what the major structured objects contain.
+
+The major domain objects are:
+
+```text
+CandidateProfile
+JobSpec
+EvidenceMap
+CVContentPlan
+CVDraft
+```
+
+Their detailed conceptual structures should not be duplicated unnecessarily in this architecture document.
+
+The exact Pydantic implementation will be defined in the Python code.
+
+---
+
+# 0. Candidate Profile
+
+```text
+Professional Portfolio
+        ↓
+Candidate Profile Extraction / Loading
+        ↓
+CandidateProfile
+```
+
+## Purpose
+
+Provide a single source of truth for stable factual candidate information.
+
+This may include:
+
+- name;
+- contact information;
+- professional location;
+- professional links;
+- education and credentials;
+- official experience titles;
+- organizations;
+- employment or research dates;
+- languages;
+- other stable information required by CV generation.
+
+The Candidate Profile should remain independent from a specific job application.
+
+It may be updated when the Professional Portfolio changes, but it should not need to be recreated from scratch for every application.
+
+## Design Principle
+
+Stable facts should be retrieved rather than regenerated whenever possible.
+
+For example:
+
+```text
+CandidateProfile
+    ↓
+official title
+organization
+dates
+    ↓
+CVDraft
+```
+
+is preferable to:
+
+```text
+CandidateProfile
+    ↓
+AI rewrites factual information
+    ↓
+CVDraft
+```
+
+AI may transform presentation when necessary, but must not alter the underlying factual meaning.
+
+---
+
+# 1. Job Analysis
 
 ```text
 Job Posting
@@ -93,42 +206,83 @@ JobSpec Validation Gate
 Validated JobSpec
 ```
 
-### Purpose
+## Input
 
-Transform the unstructured job posting into a structured representation of what the employer is looking for.
+The original unstructured job posting.
 
-The `JobSpec` may contain information such as:
+## Purpose
 
-* role information;
-* responsibilities;
-* required and preferred skills;
-* expected proficiency when explicitly supported;
-* domain knowledge;
-* education and experience requirements;
-* collaboration expectations;
-* employment constraints.
+Transform the posting into a structured representation of what the employer is actually asking for.
 
-### Validation
+The Job Analyzer should identify information such as:
 
-The JobSpec Validation Gate verifies that the structured data is valid and remains grounded in the original posting.
+- role information;
+- responsibilities;
+- technical requirements;
+- software-engineering practices;
+- domain knowledge;
+- education requirements;
+- experience requirements;
+- collaboration expectations;
+- language requirements;
+- employment constraints;
+- required versus preferred qualifications;
+- explicitly stated proficiency expectations;
+- source evidence from the original posting.
+
+Individual employer expectations should be represented as identifiable job requirements so that later stages can evaluate them independently.
+
+## Output
+
+`JobSpec`
+
+After validation:
+
+`Validated JobSpec`
+
+## JobSpec Validation
+
+The JobSpec Validation Gate verifies both structural validity and semantic fidelity.
 
 Validation may include:
 
-* deterministic schema checks;
-* source traceability;
-* confidence rules;
-* semantic comparison of the generated JobSpec against the original job posting.
+- schema validation;
+- required-field checks;
+- source traceability;
+- deterministic rules;
+- semantic comparison against the original posting.
 
-The system should not infer requirements or skill levels that are not supported by the posting.
+The validator should detect problems such as:
+
+- omitted important requirements;
+- invented requirements;
+- required qualifications being converted into preferred ones or vice versa;
+- invented proficiency levels;
+- distorted experience requirements;
+- unsupported interpretation.
+
+For example:
+
+```text
+Posting:
+"Experience with Python"
+
+Invalid interpretation:
+"Advanced Python expertise required"
+```
+
+A structurally valid object is not automatically a semantically valid interpretation.
+
+Because errors introduced here propagate through the rest of the pipeline, JobSpec semantic validation is a mandatory V1 trust boundary.
 
 ---
 
-## 2. Evidence Matching
+# 2. Evidence Matching
 
 ```text
 Validated JobSpec
         +
-Professional Portfolio
+Professional Portfolio Evidence
         ↓
 Evidence Matcher
         ↓
@@ -139,15 +293,167 @@ Evidence Validation Gate
 Validated Evidence Map
 ```
 
-### Purpose
+## Inputs
 
-Determine which documented experiences, skills, projects, and accomplishments from the Professional Portfolio support each relevant job requirement.
+### Validated JobSpec
 
-Every proposed match must remain traceable to its source in the portfolio.
+The validated representation of employer requirements.
 
-### Evidence Strength
+### Professional Portfolio Evidence
 
-Evidence can be classified according to predefined rules, for example:
+Curated professional evidence including:
+
+- skills;
+- professional and research experience;
+- projects;
+- technical accomplishments;
+- scientific work;
+- software-development experience;
+- publications and presentations when relevant;
+- code audits;
+- documented autonomy or responsibility;
+- other supporting professional evidence.
+
+The strategy used to provide portfolio context to the matcher is defined separately in `Decisions.md`.
+
+---
+
+## Purpose
+
+Determine what documented candidate evidence corresponds to each relevant employer requirement.
+
+The matching stage must answer more than:
+
+> Can I find one related sentence?
+
+It should determine:
+
+> What distinct evidence scenarios exist, what capability do they collectively demonstrate, and how well does that demonstrated capability satisfy this specific requirement?
+
+---
+
+# 2.1 Evidence Collection
+
+For each relevant job requirement, the Evidence Matcher should search for all materially relevant evidence rather than stopping after the first plausible correspondence.
+
+Conceptually:
+
+```text
+Job Requirement
+        ↓
+Relevant Portfolio Material
+        ↓
+Distinct Evidence Scenarios
+```
+
+For example:
+
+```text
+Requirement:
+OpenCV experience
+
+Possible evidence scenarios:
+- interactive ROI-selection tool;
+- mask and contour processing;
+- thresholding workflows;
+- image/video I/O;
+- scientific visualization.
+```
+
+A single requirement may therefore be supported by several distinct experiences.
+
+---
+
+# 2.2 Evidence Scenario Grouping
+
+Multiple portfolio documents may describe the same underlying work.
+
+For example:
+
+```text
+Skills document
+Project document
+Code audit
+README
+```
+
+may all describe one implementation.
+
+These references should not automatically be counted as independent evidence.
+
+Conceptually:
+
+```text
+Several source references
+        ↓
+same real activity
+        ↓
+One Evidence Scenario
+```
+
+Multiple sources may increase confidence that the scenario is well documented, but they must not artificially increase demonstrated breadth or depth.
+
+This prevents double counting.
+
+---
+
+# 2.3 Capability Assessment
+
+After relevant evidence scenarios have been identified, the system should determine what capability they collectively demonstrate.
+
+Important dimensions include:
+
+```text
+depth
+breadth
+repetition
+autonomy
+context
+confidence
+```
+
+These dimensions must remain conceptually separate.
+
+For example:
+
+```text
+Several basic OpenCV uses
+        ↓
+Depth: BASIC
+Breadth: MODERATE
+Repetition: HIGH
+Confidence: HIGH
+```
+
+should not automatically become:
+
+```text
+Depth: ADVANCED
+```
+
+Repeated use increases evidence of familiarity and confidence, but does not necessarily increase technical sophistication.
+
+Likewise, a single technically substantial scenario may demonstrate more depth than several trivial scenarios.
+
+The capability assessment therefore evaluates the nature of the work rather than simply counting occurrences.
+
+---
+
+# 2.4 Requirement Matching
+
+Once the candidate capability has been characterized, it is compared with the specific employer requirement.
+
+Conceptually:
+
+```text
+Demonstrated Capability
+        +
+Job Requirement
+        ↓
+Requirement Match
+```
+
+A preliminary match classification is:
 
 ```text
 STRONG
@@ -156,123 +462,373 @@ WEAK
 UNSUPPORTED
 ```
 
-These classifications determine how strongly the evidence may later be represented in the CV.
+### STRONG
 
-A relevant but indirect capability must not be transformed into experience with a specific technology or responsibility that is not documented.
+The demonstrated capability directly satisfies the requirement or a clearly equivalent expectation.
 
-The system must be allowed to return `UNSUPPORTED` when no adequate evidence exists.
+### PARTIAL
 
-### Validation
+Meaningful portions of the requirement are supported, but important elements remain undocumented.
 
-The Evidence Validation Gate is one of the most important safeguards in the system.
+### WEAK
 
-It verifies that proposed matches genuinely follow from the documented portfolio evidence and applies the defined evidence thresholds and claim rules.
+A conceptual relationship exists, but representing the requested capability as direct experience would be misleading.
 
-Semantic review may be used here because evaluating whether two professional capabilities genuinely correspond can require judgment.
+### UNSUPPORTED
+
+No adequate documented evidence supports the requirement.
+
+The system must be allowed to return `UNSUPPORTED`.
 
 ---
 
-## 3. CV Content Generation
+## Same Evidence, Different Requirement
 
-### 3.1 CV Planning
+Match strength is application-specific.
+
+For example:
+
+```text
+Demonstrated capability:
+Working practical OpenCV experience in scientific image processing.
+```
+
+Employer A:
+
+```text
+"Familiarity with OpenCV"
+```
+
+may produce:
+
+```text
+STRONG
+```
+
+while Employer B:
+
+```text
+"Advanced OpenCV expertise for real-time
+object detection and tracking"
+```
+
+may produce:
+
+```text
+PARTIAL
+or
+WEAK
+```
+
+The candidate evidence has not changed.
+
+The employer requirement has.
+
+---
+
+# 2.5 Claim Boundaries
+
+Evidence strength and CV claim permission are related but are not identical.
+
+For example:
+
+```text
+STRONG
+→ direct wording may generally be allowed
+
+PARTIAL
+→ conservative related wording may be allowed
+→ unsupported elements must remain excluded
+
+WEAK
+→ normally should not support a direct claim
+
+UNSUPPORTED
+→ must not generate a claim
+```
+
+A partial match should explicitly preserve:
+
+- matched elements;
+- missing elements;
+- allowed claim scope;
+- important limitations.
+
+For example:
+
+```text
+Requirement:
+Production-grade Python software
+
+Supported:
+Scientific Python software development
+Reusable analysis workflows
+
+Not documented:
+Production deployment
+
+Allowed claim:
+Scientific Python software development
+
+Not allowed:
+Production software engineering experience
+```
+
+The planner and writer may improve relevance and wording, but they may not cross this boundary.
+
+---
+
+# 2.6 Evidence Validation
+
+The Evidence Validation Gate is one of the most important semantic safeguards in the system.
+
+It should validate two different judgments.
+
+## Capability Validation
+
+Does the evidence actually justify the capability assessment?
+
+Examples:
+
+- Are the evidence scenarios real and source-grounded?
+- Were several documents incorrectly counted as several independent experiences?
+- Was depth exaggerated?
+- Was breadth exaggerated?
+- Was autonomy exaggerated?
+- Does the evidence really establish the stated capability?
+- Was relevant contradictory or limiting evidence ignored?
+
+## Requirement-Match Validation
+
+Given the demonstrated capability, was its correspondence with the employer requirement assessed correctly?
+
+Examples:
+
+- Is `STRONG` justified?
+- Are unsupported requirement elements explicitly preserved?
+- Was related experience incorrectly converted into direct experience?
+- Are claim boundaries conservative enough?
+- Was an unsupported technology inferred?
+
+Only after these semantic judgments are validated does the output become:
+
+`Validated Evidence Map`
+
+CV Planning must consume the validated version rather than the raw Candidate Evidence Map.
+
+---
+
+# 3. CV Planning
 
 ```text
 Validated JobSpec
         +
 Validated Evidence Map
         +
-Candidate Profile
+CandidateProfile
         ↓
 CV Planner
         ↓
-CV Content Plan
+CVContentPlan
 ```
 
-### Purpose
+## Purpose
 
-Decide what should appear in the CV and how the available space should be prioritized.
+Determine what should appear in this specific CV and how limited document space should be allocated.
 
-The planner determines:
+The planner answers:
 
-* which experiences should be included;
-* which projects should be included;
-* which skills should be emphasized;
-* which evidence items should support each section;
-* which job requirements deserve the most attention;
-* which canonical candidate information is relevant to the document;
-* which valid but low-relevance information should be omitted.
+> What should the CV communicate?
 
-The planner may only use evidence from the Validated Evidence Map when planning tailored claims.
+It does not yet answer:
 
-The resulting plan should preserve references to the evidence supporting each selected item.
+> What is the final polished wording?
 
 ---
 
-### 3.2 CV Writing
+## Planner Responsibilities
+
+The planner may determine:
+
+- which experiences should appear;
+- which projects should appear;
+- which skills deserve emphasis;
+- which evidence scenarios support each planned item;
+- which employer requirements deserve the most attention;
+- which sections should appear;
+- section ordering;
+- relative content priority;
+- approximate space allocation;
+- which canonical information is relevant;
+- which valid but low-value information should be omitted.
+
+Planning should consider:
 
 ```text
-CV Content Plan
+Employer relevance
         +
-Approved Evidence
+Evidence quality
+        +
+Candidate differentiation
+        +
+Available CV space
+```
+
+A valid piece of experience does not automatically deserve space.
+
+---
+
+## Planning Boundaries
+
+The planner may:
+
+- prioritize strong and relevant evidence;
+- combine related evidence when factual meaning is preserved;
+- emphasize supported transferable capabilities;
+- omit low-relevance information;
+- allow one strong accomplishment to address several employer requirements.
+
+The planner may not:
+
+- introduce new evidence;
+- upgrade validated capability depth;
+- upgrade evidence strength;
+- transform indirect experience into direct experience;
+- introduce undocumented technologies;
+- introduce unsupported outcomes or metrics;
+- use `UNSUPPORTED` evidence to justify CV content;
+- cross the allowed claim boundaries defined by the Evidence Map.
+
+---
+
+## Output
+
+`CVContentPlan`
+
+Each significant planned content item should remain traceable to:
+
+- relevant job requirements;
+- validated evidence scenarios;
+- its intended purpose;
+- its relative priority;
+- its allowed claim scope.
+
+This lets the system later answer:
+
+> Why did this content deserve space in this CV?
+
+---
+
+## Planning Validation
+
+A separate semantic AI reviewer is not assumed to be necessary in V1.
+
+Initial validation should use structural and deterministic checks such as:
+
+- referenced requirements exist;
+- referenced evidence scenarios exist;
+- unsupported evidence is not selected;
+- claim boundaries remain consistent with the Validated Evidence Map;
+- canonical references exist;
+- planned sections and content types are valid.
+
+If testing demonstrates recurring strategic planning errors that cannot be caught through these checks, semantic planning review may be added later.
+
+---
+
+# 4. CV Writing
+
+```text
+CVContentPlan
+        +
+Validated Evidence Map
         ↓
 CV Writer
         ↓
 Tailored CV Content
 ```
 
-### Purpose
+## Purpose
 
-Transform the approved CV Content Plan into concise and effective professional CV language.
+Transform approved content decisions into concise, effective professional CV language.
 
-The writer is primarily responsible for content that requires language or targeting decisions, such as:
+The writer answers:
 
-* professional summary;
-* experience bullets;
-* project descriptions;
-* accomplishment statements;
-* skill emphasis.
+> How should the approved material be expressed?
 
-The writer may improve wording and presentation but may not modify the underlying reality.
-
-The writer should not unnecessarily regenerate stable factual information such as:
-
-* candidate name;
-* contact information;
-* degree names;
-* institutions;
-* official experience titles;
-* organizations;
-* dates;
-* languages.
-
-Those values come from the `Candidate Profile`.
+It should not independently decide what evidence is true.
 
 ---
 
-### 3.3 CV Draft Assembly
+## Writer Responsibilities
+
+The writer may generate:
+
+- professional summary wording;
+- experience bullets;
+- project descriptions;
+- accomplishment statements;
+- targeted skills wording.
+
+The writer may improve:
+
+- clarity;
+- concision;
+- relevance;
+- professional tone;
+- emphasis.
+
+The writer may synthesize several approved evidence scenarios into one concise statement when all important elements remain supported.
+
+---
+
+## Writing Boundary
+
+The guiding rule is:
+
+> The writer may improve wording, but not reality.
+
+The writer may not:
+
+- invent technologies;
+- invent responsibilities;
+- invent outcomes;
+- invent numerical metrics;
+- increase capability depth;
+- exaggerate autonomy;
+- convert academic or research context into undocumented production experience;
+- exceed allowed claim scope;
+- introduce significant unplanned claims.
+
+The writer should receive approved evidence rather than independently searching the entire Professional Portfolio.
+
+---
+
+# 5. CV Draft Assembly
 
 ```text
 Tailored CV Content
         +
-Candidate Profile
+CandidateProfile
         +
-CV Content Plan
+CVContentPlan
         ↓
 CV Draft Assembly
         ↓
-Structured CV Draft
+CVDraft
 ```
 
-### Purpose
+## Purpose
 
-Combine tailored AI-generated content with canonical candidate information to create the complete structured CV.
+Combine application-specific writing with canonical candidate information to create the complete structured CV.
 
-This stage should primarily be deterministic.
+This stage should be primarily deterministic.
 
-For example, it may combine:
+For example:
 
 ```text
 Canonical data:
+
 Graduate Researcher
 Université de Sherbrooke
 2018–2026
@@ -280,49 +836,139 @@ Université de Sherbrooke
         +
 
 Tailored content:
-Developed Python-based scientific image-processing workflows...
+
+Developed Python-based scientific
+image-processing workflows...
 
         ↓
 
 Complete experience entry
 ```
 
-The assembly stage should not reinterpret or rewrite factual candidate information.
+Canonical information should not be unnecessarily regenerated or reinterpreted.
 
 ---
 
-### 3.4 CV Draft Validation
+## Output
+
+`CVDraft`
+
+The CVDraft contains the complete structured content intended for the final CV while remaining independent from the rendering technology.
+
+Significant tailored claims should preserve traceability to:
 
 ```text
-Structured CV Draft
-        ↓
-CV Draft Validation Gate
-        ↓
-Validated CV Draft
+CV Claim
+    ↓
+CVContentPlan item
+    ↓
+Validated Evidence Scenario(s)
+    ↓
+Job Requirement(s)
 ```
 
-### Purpose
-
-Ensure that the writer and assembly process preserved the factual meaning of the approved content and canonical candidate data.
-
-The validator must detect statements that:
-
-* introduce unsupported information;
-* increase the strength of a claim beyond the approved evidence;
-* change the meaning of the source evidence;
-* invent technologies, responsibilities, metrics, outcomes, or expertise levels;
-* exaggerate autonomy or responsibility;
-* create misleading implications by combining otherwise true statements;
-* modify canonical facts such as titles, organizations, dates, education, or credentials.
-
-Every significant CV statement should remain traceable to one or more validated evidence items.
+Canonical facts follow their own source path through `CandidateProfile`.
 
 ---
 
-## 4. Document Generation
+# 6. CV Draft Validation
 
 ```text
-Validated CV Draft
+CVDraft
+    ↓
+CV Draft Validation Gate
+    ↓
+Validated CVDraft
+```
+
+## Purpose
+
+Verify that writing and assembly preserved the approved factual meaning.
+
+This is a mandatory semantic trust boundary because language generation can introduce subtle factual exaggeration even when the evidence supplied to the writer was correct.
+
+---
+
+## Canonical Fact Validation
+
+Check that canonical information remains consistent with `CandidateProfile`.
+
+Examples:
+
+- names;
+- contact information;
+- role titles;
+- organizations;
+- dates;
+- degrees;
+- institutions;
+- credentials;
+- languages.
+
+Where practical, these checks should be deterministic.
+
+---
+
+## Evidence Fidelity Validation
+
+Check that significant tailored statements remain supported by their referenced evidence.
+
+The validator should detect statements that:
+
+- introduce unsupported information;
+- increase capability depth;
+- exaggerate autonomy;
+- introduce undocumented technologies;
+- invent responsibilities;
+- invent results;
+- distort context;
+- create misleading implications by combining individually true facts.
+
+This requires semantic review.
+
+---
+
+## Planning Fidelity Validation
+
+Check that the writer respected the `CVContentPlan`.
+
+Examples:
+
+- planned important content was not accidentally omitted;
+- unsupported new content was not introduced;
+- prohibited implications were avoided;
+- claim boundaries were preserved;
+- content remained associated with the correct experience or project.
+
+---
+
+## Internal Consistency
+
+Check for contradictions or inconsistencies inside the CV.
+
+Examples:
+
+- conflicting dates;
+- conflicting titles;
+- inconsistent technology names;
+- repeated bullets;
+- summary claims broader than the supporting experience;
+- duplicate or contradictory education information.
+
+---
+
+## Output
+
+`Validated CVDraft`
+
+Only the validated draft should proceed to rendering.
+
+---
+
+# 7. Document Generation
+
+```text
+Validated CVDraft
         ↓
 Render Adapter
         ↓
@@ -335,502 +981,341 @@ Document Validation Gate
 FINAL CV
 ```
 
-### Render Adapter
+---
 
-The Render Adapter converts the internal CV representation into the format expected by the selected rendering system.
+## Render Adapter
 
-This isolates the internal CV-generation pipeline from the specific rendering technology.
+The Render Adapter converts the internal CVDraft representation into the representation expected by the selected rendering system.
 
-### Renderer
+Conceptually:
 
-The renderer transforms the approved structured CV content into the final formatted PDF.
+```text
+Validated CVDraft
+        ↓
+Render Adapter
+        ↓
+Renderer-specific structured input
+```
 
-The renderer is responsible for presentation, not content selection or writing.
+This isolates domain logic from rendering technology.
 
-### Document Validation
-
-The final validation stage verifies the generated document rather than the truthfulness of its content.
-
-It may check:
-
-* text extraction;
-* missing or duplicated content;
-* page count;
-* formatting problems;
-* character encoding;
-* page breaks;
-* other rendering or ATS-related issues.
+The rest of the CV Generator should not depend directly on RenderCV, Typst, or another renderer.
 
 ---
 
-## Canonical Data Principle
+## Renderer
+
+The renderer transforms approved structured content into the formatted PDF.
+
+Its responsibility is presentation rather than:
+
+- evidence selection;
+- CV strategy;
+- claim generation;
+- factual interpretation.
+
+---
+
+## Document Validation
+
+The final validation stage checks the generated document rather than reevaluating the semantic truthfulness of the CV.
+
+Possible checks include:
+
+- successful PDF creation;
+- text extraction;
+- missing content;
+- duplicated content;
+- page count;
+- unexpected blank pages;
+- character encoding;
+- page breaks;
+- malformed links;
+- formatting integrity;
+- ATS-readable text.
+
+This stage should initially rely primarily on deterministic document checks rather than another semantic AI reviewer.
+
+---
+
+# Canonical Data Principle
 
 Stable factual candidate information should have a single source of truth.
 
+```text
+Professional Portfolio
+        ↓
+CandidateProfile
+        ↓
+CVDraft
+        ↓
+Final PDF
+```
+
 The system should not ask an AI model to recreate information that can instead be retrieved deterministically.
 
-The `Candidate Profile` represents this canonical information.
-
-It may contain:
-
-* name;
-* contact information;
-* location;
-* professional links;
-* education and credentials;
-* official experience titles;
-* organizations;
-* employment or research dates;
-* languages;
-* other stable factual information required by the CV.
-
-The Candidate Profile may be created or updated when the Professional Portfolio changes, but it should not need to be regenerated independently for every job application.
-
-AI should only transform canonical information when transformation is genuinely required, and must never alter its underlying factual meaning.
+AI should transform canonical information only when transformation is genuinely required and must never alter its factual meaning.
 
 ---
 
-## Validation Principle
+# Evidence Aggregation Principle
+
+Professional capability should not be inferred from a single arbitrary source occurrence.
+
+The system should:
+
+```text
+collect relevant evidence
+        ↓
+identify distinct real scenarios
+        ↓
+avoid duplicate counting
+        ↓
+characterize demonstrated capability
+        ↓
+compare capability with the requirement
+```
+
+Multiple evidence scenarios may strengthen:
+
+- breadth;
+- repetition;
+- confidence.
+
+They do not automatically strengthen:
+
+- technical depth;
+- autonomy;
+- professional context.
+
+Evidence aggregation must therefore be semantic rather than simple counting.
+
+---
+
+# Validation Principle
 
 Validation should occur as close as practical to the transformation that may introduce an error.
 
 However, validation does **not** automatically require another AI call.
 
-Depending on the problem, a validation gate may use:
+Depending on the failure mode, a validation gate may use:
 
 ```text
+Pydantic/schema validation
 deterministic rules
-schema validation
 source/provenance checks
-confidence thresholds
+reference checks
+business rules
+confidence rules
 semantic AI review
 document-level checks
 ```
 
-AI-based review should primarily be used when the decision requires semantic judgment that cannot be reliably expressed as deterministic rules.
+Semantic AI review should primarily be used when correctness depends on meaning rather than structure.
+
+For V1, the major semantic trust boundaries are:
+
+```text
+JobSpec Validation
+        ↓
+Did we understand the employer correctly?
+
+Evidence Validation
+        ↓
+Does the candidate evidence really support the requirement?
+
+CV Draft Validation
+        ↓
+Did the generated CV preserve approved reality?
+```
+
+CV Planning should initially use lighter deterministic/reference validation.
+
+Document Validation should initially focus on deterministic PDF integrity.
 
 ---
 
-## Traceability Principle
+# Traceability Principle
 
-The system should maintain a traceable chain from the final CV back to the original evidence.
+Every significant tailored CV statement should remain traceable through the complete decision chain.
 
 ```text
+Original Job Posting
+        ↓
 Job Requirement
-      ↓
-Validated Portfolio Evidence
-      ↓
-CV Content Plan
-      ↓
-CV Statement
-      ↓
+        ↓
+Validated Evidence Scenario(s)
+        ↓
+Capability Assessment
+        ↓
+Requirement Match
+        ↓
+CVContentPlan Item
+        ↓
+CV Claim
+        ↓
 Final PDF
 ```
 
-Canonical factual information follows a separate traceability path:
+Canonical factual information follows a separate path:
 
 ```text
 Professional Portfolio
-      ↓
-Candidate Profile
-      ↓
-Structured CV Draft
-      ↓
+        ↓
+CandidateProfile
+        ↓
+CVDraft
+        ↓
 Final PDF
 ```
 
-This traceability makes it possible to determine where an error was introduced and prevents unsupported claims or incorrect factual information from silently entering the final CV.
+Traceability provides:
+
+- factual accountability;
+- debugging;
+- reproducibility;
+- regression testing;
+- visibility into why content was selected;
+- a foundation for interview preparation.
 
 ---
 
-## Design Principle: Minimal Necessary Complexity
+# Application Persistence and Interview Preparation
 
-The architecture should contain only components that address a distinct problem or failure mode.
+Each generated CV may later lead to an interview.
 
-New validation layers, AI reviewers, frameworks, or services should be introduced when testing demonstrates a need for them rather than being added automatically.
+The system should therefore preserve the application-specific artifacts needed to reconstruct what was submitted and why.
 
-The objective is to build a reliable and understandable system without unnecessary complexity.
-
----
-
-# Data Flow Between Components
-
-Each major component receives a defined input and produces a defined output.
-
-At this stage, the architecture describes the **meaning of the data being exchanged**, not its exact technical representation.
-
-The precise schemas and Python models will be defined later.
-
----
-
-## 0. Candidate Profile
-
-### Input
-
-Professional Portfolio.
-
-### Output
-
-`Candidate Profile`
-
-The Candidate Profile contains canonical candidate information that should remain consistent across CV versions.
-
-It may contain:
-
-* name and contact information;
-* location;
-* professional links;
-* education and credentials;
-* official experience titles;
-* organizations;
-* employment or research dates;
-* languages;
-* other stable factual information required by CVs.
-
-This information should not be unnecessarily regenerated by AI for each application.
-
----
-
-## 1. Job Analysis
-
-### Input
-
-Raw job posting.
-
-This is the original job description provided to the system before interpretation or transformation.
-
-It may contain:
-
-* job title;
-* company information;
-* responsibilities;
-* required qualifications;
-* preferred qualifications;
-* technical skills;
-* education requirements;
-* experience requirements;
-* location or travel constraints;
-* other relevant information from the posting.
-
-### Output
-
-`JobSpec`
-
-The `JobSpec` is a structured representation of what the employer is asking for.
-
-It should preserve enough information for later stages to distinguish between:
-
-* role information;
-* responsibilities;
-* required skills;
-* preferred skills;
-* education and experience requirements;
-* domain knowledge;
-* collaboration or communication expectations;
-* employment constraints;
-* requirement priority or importance;
-* explicitly stated proficiency expectations;
-* supporting evidence from the original job posting.
-
-After validation, the output becomes:
-
-`Validated JobSpec`
-
----
-
-## 2. Evidence Matching
-
-### Inputs
-
-`Validated JobSpec`
-
-The validated structured representation of the employer's requirements.
-
-Professional Portfolio
-
-The Professional Portfolio is the source of truth for documented professional evidence, including:
-
-* skills;
-* professional and research experience;
-* projects;
-* technical accomplishments;
-* scientific work;
-* software-development experience;
-* publications and presentations when relevant;
-* documented levels of autonomy or responsibility;
-* supporting evidence from code audits or other source material.
-
-### Output
-
-`Candidate Evidence Map`
-
-The Candidate Evidence Map links relevant job requirements to documented evidence from the Professional Portfolio.
-
-For each requirement, the Evidence Matcher should identify:
-
-* the requirement being evaluated;
-* relevant portfolio evidence;
-* the source or sources of that evidence;
-* the nature of the correspondence;
-* the strength of the evidence;
-* limitations or missing elements;
-* whether the evidence supports a direct CV claim.
-
-A requirement does not need to have matching evidence.
-
-The system must be able to explicitly represent that no adequate evidence was found.
-
-### Evidence Strength
-
-A preliminary classification is:
-
-* `STRONG`
-* `PARTIAL`
-* `WEAK`
-* `UNSUPPORTED`
-
-`STRONG` indicates that the portfolio directly documents the requested skill, responsibility, or a clearly equivalent capability.
-
-`PARTIAL` indicates that the portfolio demonstrates a closely related capability, but some aspect of the employer's requirement is not directly documented.
-
-`WEAK` indicates that there is some conceptual relationship, but representing the requirement as direct experience would be misleading.
-
-`UNSUPPORTED` indicates that no adequate documented evidence exists.
-
-### Claim Eligibility
-
-Evidence strength and CV claim strength are related but are not identical.
-
-For example:
-
-* `STRONG` evidence may support direct wording.
-* `PARTIAL` evidence may support related or transferable wording, but must not introduce undocumented technologies or experience.
-* `WEAK` evidence may be useful for internal analysis but should normally not support a direct CV claim.
-* `UNSUPPORTED` evidence must not generate a CV claim.
-
-The exact thresholds and rules will be defined during implementation design.
-
-### Provenance
-
-Every proposed correspondence must remain traceable to its source in the Professional Portfolio.
+Conceptually, an application may retain:
 
 ```text
-Job Requirement
-    ↓
-Portfolio Evidence
-    ↓
-Source File or Document
-    ↓
-Evidence Classification
+Original Job Posting
+JobSpec
+Validated JobSpec
+EvidenceMap
+Validated EvidenceMap
+CVContentPlan
+CVDraft
+Validated CVDraft
+Submitted PDF
 ```
 
-### Validation
+The exact storage structure is an implementation concern.
 
-The `Candidate Evidence Map` passes through an Evidence Validation Gate.
-
-The validator verifies that:
-
-* the proposed evidence actually exists;
-* the evidence has not been distorted;
-* the correspondence is reasonable;
-* the assigned evidence strength follows the defined rules;
-* missing technologies, responsibilities, or expertise have not been inferred;
-* indirect experience has not been represented as direct experience.
-
-After validation, the output becomes:
-
-`Validated Evidence Map`
+The exact PDF submitted to the employer should be preserved rather than relying on future regeneration.
 
 ---
 
-## 3. CV Planning
+## Interview Preparation
 
-### Inputs
+Interview preparation is not part of the critical CV-generation pipeline.
 
-`Validated JobSpec`
+It is a downstream capability enabled by the evidence and traceability architecture.
 
-The validated representation of the employer's requirements, priorities, responsibilities, and constraints.
-
-`Validated Evidence Map`
-
-The validated mapping between job requirements and documented evidence from the Professional Portfolio.
-
-`Candidate Profile`
-
-Canonical candidate information that may influence section inclusion and document structure.
-
-### Output
-
-`CV Content Plan`
-
-The CV Content Plan defines the content strategy for the targeted CV before final wording is produced.
-
-It should determine:
-
-* which experiences should be included;
-* which projects should be included;
-* which skills should be emphasized;
-* which evidence items should support each section;
-* which job requirements should receive the most attention;
-* how much relative emphasis each experience, project, or skill should receive;
-* which relevant information should be omitted because of limited space or low relevance;
-* the intended purpose of each planned bullet or section.
-
-The planner should optimize the CV for relevance to the target position while remaining strictly within the boundaries established by the Validated Evidence Map.
-
-### Planning Rules
-
-The CV Planner may:
-
-* prioritize stronger and more relevant evidence;
-* combine related evidence when doing so preserves its original meaning;
-* emphasize transferable capabilities supported by the portfolio;
-* omit valid but low-relevance information;
-* adapt the relative importance of experiences and projects according to the target role.
-
-The CV Planner may not:
-
-* introduce new evidence;
-* upgrade the strength of validated evidence;
-* transform indirect experience into direct experience;
-* introduce undocumented technologies, responsibilities, results, or expertise;
-* use evidence classified as `UNSUPPORTED` to justify CV content.
-
-Evidence classified as `WEAK` should normally remain excluded from direct CV claims unless later rules explicitly allow a conservative use.
-
-### Traceability
-
-Every planned CV item should remain connected to the validated evidence that supports it.
+Conceptually:
 
 ```text
-Job Requirement
-      ↓
-Validated Evidence
-      ↓
-Planned CV Content
-      ↓
-Evidence Reference
+Validated JobSpec
+        +
+Validated Evidence Map
+        +
+Submitted CVDraft / CV
+        ↓
+Interview Preparation
 ```
 
-### Planning Report
+Because evidence scenarios preserve meaningful context, the system should later be able to reconstruct:
 
-The planner may also produce an internal planning report explaining major selection decisions.
+- what the candidate actually did;
+- why it was done;
+- which technologies were used;
+- what part was performed independently;
+- relevant technical decisions;
+- constraints or difficulties;
+- outcomes;
+- limitations of the experience;
+- which CV claim the evidence supports;
+- which employer requirement motivated the claim.
 
-For example, the report may indicate:
-
-* why a particular experience received high priority;
-* which job requirements it supports;
-* why another experience was omitted;
-* which evidence was selected for a planned bullet;
-* which relevant requirements could not be represented because no adequate evidence exists.
-
-The planning report is an internal diagnostic artifact and is not part of the final CV.
-
-### Validation
-
-At this stage, a dedicated AI-based validation step is not assumed to be necessary.
-
-The system should first rely on structural and deterministic checks, such as:
-
-* every planned item references valid evidence;
-* no unsupported evidence is selected;
-* evidence strength is not modified;
-* referenced job requirements exist;
-* planned content remains traceable.
-
-If later testing shows that the planner regularly makes poor strategic decisions despite these checks, a semantic planning-review step may be added.
-
-The output of this stage is:
-
-`CV Content Plan`
+Interview questions, STAR answers, and coaching should be derived from this factual evidence rather than stored directly inside the Evidence Map.
 
 ---
 
-## 4. CV Writing and Draft Assembly
+# Persistence Principle
 
-### Inputs
+Major intermediate artifacts should be persisted when they provide practical value.
 
-`CV Content Plan`
+This supports:
 
-The approved strategy describing what should appear in the targeted CV.
+- debugging;
+- observability;
+- reproducibility;
+- isolated testing;
+- regression evaluation;
+- comparison between model or prompt versions;
+- application history;
+- interview preparation.
 
-`Validated Evidence Map`
-
-The approved evidence supporting the tailored content.
-
-`Candidate Profile`
-
-Canonical factual information required to construct the complete document.
-
-### Writer Output
-
-`Tailored CV Content`
-
-The CV Writer transforms approved evidence into professional CV language.
-
-It may generate:
-
-* summary text;
-* experience bullets;
-* project descriptions;
-* accomplishment statements;
-* targeted skill wording.
-
-It may improve wording but may not improve reality.
-
-### Draft Assembly
-
-The tailored content is combined with the Candidate Profile to produce:
-
-`Structured CV Draft`
-
-Canonical information should be copied into the draft without unnecessary AI reinterpretation.
-
-### Validation
-
-The Structured CV Draft passes through the CV Draft Validation Gate.
-
-The validator verifies that:
-
-* every significant generated claim is supported by approved evidence;
-* no unsupported information was introduced;
-* evidence strength was respected;
-* source meaning was preserved;
-* autonomy or responsibility was not exaggerated;
-* canonical candidate information remains correct;
-* dates, titles, organizations, education, and credentials were not altered;
-* the resulting draft follows the CV Content Plan.
-
-After validation, the output becomes:
-
-`Validated CV Draft`
-
----
-
-## 5. Document Generation
-
-### Input
-
-`Validated CV Draft`
-
-### Output
-
-Final validated CV in PDF format.
+Typical application-specific artifacts may include:
 
 ```text
-Validated CV Draft
-        ↓
-Render Adapter
-        ↓
-Renderer
-        ↓
-CV PDF
-        ↓
-Document Validation Gate
-        ↓
-FINAL CV
+job_spec.json
+evidence_map.json
+cv_content_plan.json
+cv_draft.json
+CV.pdf
 ```
 
-The renderer is responsible for presentation rather than content decisions.
+Validated and unvalidated versions may be stored separately when useful for debugging or evaluation.
 
-The Document Validation Gate verifies the integrity and usability of the generated PDF.
+Exact persistence decisions are documented in `Decisions.md`.
+
+---
+
+# Renderer Independence Principle
+
+Domain models should describe CV meaning rather than renderer syntax.
+
+The internal pipeline should operate on objects such as:
+
+```text
+CVDraft
+ExperienceEntry
+ProjectEntry
+SkillGroup
+CVClaim
+```
+
+rather than directly constructing renderer-specific YAML, Typst, LaTeX, or template commands.
+
+Renderer-specific transformation belongs in the Render Adapter.
+
+This allows the renderer to be replaced without redesigning the evidence, planning, or writing pipeline.
+
+---
+
+# Minimal Necessary Complexity
+
+The architecture should contain only components that address a distinct problem or demonstrated failure mode.
+
+New components should not be added simply because they are common in AI systems.
+
+Examples include:
+
+- additional AI reviewers;
+- retrieval frameworks;
+- vector databases;
+- orchestration frameworks;
+- additional validation gates;
+- complex provider abstractions.
+
+They should be introduced when:
+
+1. testing demonstrates a concrete need; or
+2. they serve a deliberate and useful learning objective without compromising the primary project.
+
+The design principle is:
+
+> Introduce complexity to solve an identified problem, not in anticipation of every possible problem.
+
+The objective is to build a reliable, understandable, testable CV Generator without unnecessary architecture.
