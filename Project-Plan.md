@@ -18,10 +18,16 @@ Implementation — typed domain models and validation.
 * `JobSpec`
 * stable requirement-ID validation
 * JSON round-trip validation for `JobSpec`
+- Evidence scenarios and source provenance
+- Capability assessment
+- Requirement matching and claim boundaries
+- EvidenceAssessment
+- EvidenceMap reference-integrity validation
+- EvidenceMap JSON round-trip
 
 ### Next
 
-* Implement `EvidenceMap`
+* Implement `CVContentPlan`
 * represent requirement-to-evidence relationships and provenance
 * define evidence strength and limitations
 * add validation for evidence mappings

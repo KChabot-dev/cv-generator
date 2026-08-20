@@ -36,3 +36,13 @@
 * Structural validation and semantic validation are different. Pydantic can verify that `REQUIRED` is a valid priority, but a later semantic validation stage must verify that the original posting actually described the requirement as required.
 * Tests should focus on domain contracts and failure modes rather than retesting basic Pydantic or Python behavior.
 * Writing a failing duplicate-requirement-ID test before implementing the validator provided a small example of test-driven development.
+* 
+## Evidence Modelling and Traceability
+
+- Evidence should be represented as documented scenarios rather than duplicated every time it supports another requirement.
+- `SourceItem` preserves provenance back to the Professional Portfolio/RAG.
+- Evidence capability and requirement fit are separate concepts: the same capability may strongly satisfy one requirement and only partially satisfy another.
+- Depth, repetition, autonomy, context, and confidence should remain separate rather than being collapsed into one arbitrary skill score.
+- Unsupported requirements must remain observable and must not receive evidence or claim eligibility.
+- Top-level models can validate reference integrity that individual nested models cannot verify alone.
+- Cross-model references, such as `EvidenceMap.requirement_id` → `JobSpec.REQ-*`, will be validated later where both models are available.
