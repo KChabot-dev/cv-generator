@@ -1,12 +1,16 @@
 from enum import StrEnum
 from typing import Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
-from cv_generator.domain.common import PartialDate, is_definitely_before
+from cv_generator.domain.common import (
+    DomainModel,
+    PartialDate,
+    is_definitely_before,
+)
 
 
-class CandidateIdentity(BaseModel):
+class CandidateIdentity(DomainModel):
     full_name: str
     location: str | None = None
     email: str | None = None
@@ -19,7 +23,7 @@ class EducationStatus(StrEnum):
     IN_PROGRESS = "in_progress"
     DISCONTINUED = "discontinued"
 
-class EducationRecord(BaseModel):
+class EducationRecord(DomainModel):
     id: str
     degree: str
     field: str
@@ -46,7 +50,7 @@ class EducationRecord(BaseModel):
 
         return self
 
-class ExperienceRecord(BaseModel):
+class ExperienceRecord(DomainModel):
     id: str
     role_title: str
     organization: str
@@ -60,4 +64,35 @@ class ExperienceRecord(BaseModel):
             self.end_date, self.start_date
         ):
             raise ValueError("end_date cannot be earlier than start_date")
+        return self
+
+class LanguageProficiency(StrEnum):
+    ELEMENTARY = "elementary"
+    LIMITED_WORKING = "limited_working"
+    PROFESSIONAL_WORKING = "professional_working"
+    FULL_PROFESSIONAL = "full_professional"
+    NATIVE_OR_BILINGUAL = "native_or_bilingual"
+
+
+class LanguageRecord(DomainModel):
+    language: str
+    proficiency: LanguageProficiency | None = None
+
+class CandidateProfile(DomainModel):
+    identity: CandidateIdentity
+    education: list[EducationRecord] = Field(default_factory=list)
+    experiences: list[ExperienceRecord] = Field(default_factory=list)
+    languages: list[LanguageRecord] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_unique_ids(self) -> Self:
+        education_ids = [record.id for record in self.education]
+        experience_ids = [record.id for record in self.experiences]
+
+        if len(education_ids) != len(set(education_ids)):
+            raise ValueError("education record IDs must be unique")
+
+        if len(experience_ids) != len(set(experience_ids)):
+            raise ValueError("experience record IDs must be unique")
+
         return self

@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
+class DomainModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 class PartialDate(BaseModel):
     year: int = Field(ge=1)
     month: int | None = Field(default=None, ge=1, le=12)
