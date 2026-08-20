@@ -55,3 +55,31 @@
 - Planning can explicitly define allowed claim scope and prohibited implications before any prose is generated.
 - Parent models can enforce relationships that nested objects cannot detect individually, such as unique section ordering and unique planned-item IDs.
 - References to objects in other domains (`REQ-*`, `SCEN-*`, `EXP-*`, etc.) require later cross-model validation.
+
+## CV Draft Modelling and Claim Provenance
+
+- `CVDraft` represents the exact CV content proposed for a specific application, while `CVContentPlan` defines what should be communicated before wording is generated.
+- Generated factual statements are represented as `DraftClaim` objects so final CV text remains traceable.
+- Claims distinguish between canonical candidate data, evidence-derived information, and mixed claims.
+- Canonical claims reference stable candidate entities such as `EXP-*` or `EDU-*`; evidence-based claims reference `SCEN-*`.
+- CV elements such as summaries, skills, and experience bullets reference claims rather than independently carrying provenance.
+- Parent models validate internal references, such as `ExperienceBullet -> CLAIM-*`, because nested models cannot know whether a referenced claim actually exists.
+- References across domain boundaries remain intentionally unresolved inside individual models. Examples include:
+  - `DraftClaim.plan_item_ref -> CVContentPlan`
+  - `DraftClaim.requirement_refs -> JobSpec`
+  - `DraftClaim.evidence_refs -> EvidenceMap`
+  - `DraftExperience.source_entity_ref -> CandidateProfile`
+- These relationships require a later cross-model validation layer where all relevant domain objects are available.
+- Data modelling can involve substantial domain complexity without substantial algorithmic complexity. Much of the implementation work consists of encoding previously defined contracts and invariants into typed models.
+
+## Domain Model Milestone
+
+The first implementation of the core domain layer is complete:
+
+1. `CandidateProfile` — canonical, job-independent candidate information.
+2. `JobSpec` — structured representation of the employer and job requirements.
+3. `EvidenceMap` — evidence provenance, capability assessment, and requirement matching.
+4. `CVContentPlan` — job-specific content selection, emphasis, and claim boundaries.
+5. `CVDraft` — exact proposed CV content with claim-level provenance.
+
+The domain layer establishes the contracts that later pipeline components must respect.
