@@ -46,3 +46,12 @@
 - Unsupported requirements must remain observable and must not receive evidence or claim eligibility.
 - Top-level models can validate reference integrity that individual nested models cannot verify alone.
 - Cross-model references, such as `EvidenceMap.requirement_id` → `JobSpec.REQ-*`, will be validated later where both models are available.
+
+## CV Content Planning
+
+- `CVContentPlan` separates content strategy from final CV wording.
+- `SectionPlan` describes document organization, while `PlannedContentItem` describes content placed inside those sections.
+- Requirement-targeted content must preserve evidence traceability.
+- Planning can explicitly define allowed claim scope and prohibited implications before any prose is generated.
+- Parent models can enforce relationships that nested objects cannot detect individually, such as unique section ordering and unique planned-item IDs.
+- References to objects in other domains (`REQ-*`, `SCEN-*`, `EXP-*`, etc.) require later cross-model validation.
