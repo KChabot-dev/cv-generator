@@ -25,3 +25,14 @@
   - Ruff: code quality and consistency
   - mypy: static type consistency
 - A failing test during the `EducationRecord` refactor successfully detected that an existing business rule had been removed.
+
+## JobSpec Domain Modelling
+
+* Domain models should describe the object itself independently from later decisions about the candidate. `JobSpec` describes the employer and position; candidate fit is evaluated later.
+* Enums constrain controlled vocabularies such as work arrangement, employment type, requirement category, priority, expected proficiency, and experience context.
+* Qualifiers should remain attached to the concept they modify. For example, “3+ years of professional Python development” keeps the years and professional context attached to that specific requirement.
+* Pydantic field constraints handle simple rules such as non-negative years, while `model_validator` handles rules involving several fields or the model as a whole.
+* Shared model configuration such as rejecting unknown fields belongs in the common `DomainModel` rather than being repeated in every model.
+* Structural validation and semantic validation are different. Pydantic can verify that `REQUIRED` is a valid priority, but a later semantic validation stage must verify that the original posting actually described the requirement as required.
+* Tests should focus on domain contracts and failure modes rather than retesting basic Pydantic or Python behavior.
+* Writing a failing duplicate-requirement-ID test before implementing the validator provided a small example of test-driven development.

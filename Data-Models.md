@@ -182,6 +182,19 @@ The identifier allows later stages to select or reference an education record wi
 
 ---
 
+### Date Precision
+
+Canonical career dates must preserve the precision available in the source information.
+
+A date may therefore contain:
+
+* a year only, such as `2018`;
+* a year and month, such as `2018-09`.
+
+The system must not invent a month or day when the source documentation only establishes a year.
+
+Date-order validation should reject demonstrably impossible ranges while preserving ambiguity when incomplete dates do not establish an exact ordering.
+
 ## Experience Metadata
 
 Each professional or research experience should contain canonical metadata.
