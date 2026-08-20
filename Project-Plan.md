@@ -1,18 +1,25 @@
 ## Current Phase
 
-Implementation — Python project bootstrap completed; beginning Pydantic domain models.
+Implementation — Pydantic domain models and validation.
 
 ### Completed
 
-- High-level architecture
-- Conceptual data models
-- Architectural decisions
-- Python 3.13 project initialized with uv
-- Isolated virtual environment and dependency locking
+- Python project bootstrap with uv
+- Python 3.13 project environment and dependency locking
 - Pydantic runtime dependency
 - pytest, Ruff, and mypy development tooling
-- Project-level quality-tool configuration
+- Project-level tooling configuration
+- Initial domain package and unit-test structure
+- `CandidateIdentity`
+- reusable `PartialDate`
+- `EducationStatus`
+- `EducationRecord` with consistency validation
+- `ExperienceRecord`
+- reusable partial-date comparison logic
 
 ### Next
 
-Implement and test the Pydantic domain models, beginning with `CandidateProfile`.
+- Complete and test `ExperienceRecord`
+- Implement the remaining `CandidateProfile` structures
+- Assemble the top-level `CandidateProfile`
+- Add serialization/schema tests
