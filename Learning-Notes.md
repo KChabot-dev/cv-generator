@@ -96,3 +96,14 @@ The domain layer establishes the contracts that later pipeline components must r
 - `validate_pipeline_contracts()` aggregates those issues into a `ValidationReport`.
 - `ValidationReport.is_valid` provides the application-level decision about whether the pipeline may continue.
 - Structured validation results will later support logging, debugging, and targeted LLM retry behavior without parsing human-readable error strings.
+
+## Artifact Persistence
+
+- Intermediate pipeline artifacts are persisted as JSON so stages can be inspected, resumed, tested, and debugged independently.
+- `json_store.py` provides generic typed serialization and deserialization for Pydantic models.
+- `TypeVar` preserves the concrete model type through the generic loader: loading a `JobSpec` returns a statically typed `JobSpec`, rather than only a generic `BaseModel`.
+- `model_validate_json()` reconstructs the requested Pydantic model while rerunning its validation rules.
+- Invalid JSON and schema-invalid JSON fail rather than silently producing partially valid artifacts.
+- `ArtifactPaths` centralizes filesystem layout policy.
+- `ArtifactStore` provides an application-friendly facade over path generation and JSON persistence.
+- Persistence responsibilities are separated into how data is stored, where artifacts live, and which model belongs at each location.

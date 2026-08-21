@@ -1,6 +1,6 @@
 ## Current Phase
 
-Implementation — Intermediate artifact persistence.
+Implementation — Application pipeline services.
 
 ## Completed
 
@@ -87,6 +87,16 @@ Implementation — Intermediate artifact persistence.
 - `ValidationReport` aggregation
 - Pipeline-wide validation gate
 - Aggregate valid and invalid pipeline tests
+
+### Intermediate Artifact Persistence
+- Generic typed JSON save/load
+- Automatic parent-directory creation
+- Invalid JSON/schema handling
+- Stable artifact directory layout
+- Global `CandidateProfile` persistence
+- Per-run `JobSpec`, `EvidenceMap`, `CVContentPlan`, `CVDraft`, and `ValidationReport`
+- `ArtifactStore` facade
+- Filesystem persistence tests
   
 ## Next
 
