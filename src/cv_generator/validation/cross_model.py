@@ -9,13 +9,18 @@ from cv_generator.domain.planning import (
     CVContentPlan,
     InclusionStatus,
 )
+from cv_generator.validation.result import (
+    ValidationIssue,
+    ValidationReport,
+    ValidationStage,
+)
 
 
 def validate_evidence_map_against_job_spec(
     job_spec: JobSpec,
     evidence_map: EvidenceMap,
-) -> list[str]:
-    errors: list[str] = []
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
 
     job_requirement_ids = {
         requirement.id for requirement in job_spec.requirements
@@ -34,24 +39,40 @@ def validate_evidence_map_against_job_spec(
     )
 
     for requirement_id in sorted(unknown_requirement_ids):
-        errors.append(
-            f"EvidenceMap references unknown requirement: {requirement_id}"
+        issues.append(
+            ValidationIssue(
+                code="evidence.unknown_requirement",
+                message=(
+                    f"EvidenceMap references unknown requirement: "
+                    f"{requirement_id}"
+                ),
+                stage=ValidationStage.EVIDENCE,
+                references=[requirement_id],
+            )
         )
 
     for requirement_id in sorted(missing_requirement_ids):
-        errors.append(
-            f"Job requirement has no evidence assessment: {requirement_id}"
+        issues.append(
+            ValidationIssue(
+                code="evidence.missing_assessment",
+                message=(
+                    f"Job requirement has no evidence assessment: "
+                    f"{requirement_id}"
+                ),
+                stage=ValidationStage.EVIDENCE,
+                references=[requirement_id],
+            )
         )
 
-    return errors
+    return issues
 
 
 def validate_content_plan_references(
     job_spec: JobSpec,
     evidence_map: EvidenceMap,
     content_plan: CVContentPlan,
-) -> list[str]:
-    errors: list[str] = []
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
 
     known_requirement_ids = {
         requirement.id for requirement in job_spec.requirements
@@ -64,25 +85,40 @@ def validate_content_plan_references(
     for item in content_plan.planned_items:
         for requirement_ref in item.requirement_refs:
             if requirement_ref not in known_requirement_ids:
-                errors.append(
-                    f"{item.id} references unknown requirement: "
-                    f"{requirement_ref}"
+                issues.append(
+                    ValidationIssue(
+                        code="planning.unknown_requirement",
+                        message=(
+                            f"{item.id} references unknown requirement: "
+                            f"{requirement_ref}"
+                        ),
+                        stage=ValidationStage.PLANNING,
+                        references=[item.id, requirement_ref],
+                    )
+
                 )
 
-        for evidence_ref in item.evidence_refs:
-            if evidence_ref not in known_scenario_ids:
-                errors.append(
-                    f"{item.id} references unknown evidence scenario: "
-                    f"{evidence_ref}"
-                )
+            for evidence_ref in item.evidence_refs:
+                if evidence_ref not in known_scenario_ids:
+                    issues.append(
+                        ValidationIssue(
+                            code="planning.unknown_evidence_scenario",
+                            message=(
+                                f"{item.id} references unknown evidence scenario: "
+                                f"{evidence_ref}"
+                            ),
+                            stage=ValidationStage.PLANNING,
+                            references=[item.id, evidence_ref],
+                        )
+                    )
 
-    return errors
+    return issues
 
 def validate_content_plan_evidence_alignment(
     evidence_map: EvidenceMap,
     content_plan: CVContentPlan,
-) -> list[str]:
-    errors: list[str] = []
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
 
     assessments_by_requirement = {
         assessment.requirement_id: assessment
@@ -104,18 +140,25 @@ def validate_content_plan_evidence_alignment(
             }
 
             if not item_evidence_refs.intersection(approved_scenario_refs):
-                errors.append(
-                    f"{item.id} has no approved evidence for requirement: "
-                    f"{requirement_ref}"
+                issues.append(
+                    ValidationIssue(
+                        code="planning.evidence_not_aligned",
+                        message=(
+                            f"{item.id} has no approved evidence for requirement: "
+                            f"{requirement_ref}"
+                        ),
+                        stage=ValidationStage.PLANNING,
+                        references=[item.id, requirement_ref],
+                    )
                 )
 
-    return errors
+    return issues
 
 def validate_content_plan_claim_eligibility(
     evidence_map: EvidenceMap,
     content_plan: CVContentPlan,
-) -> list[str]:
-    errors: list[str] = []
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
 
     assessments_by_requirement = {
         assessment.requirement_id: assessment
@@ -136,19 +179,26 @@ def validate_content_plan_claim_eligibility(
                 assessment.requirement_match.claim_eligibility
                 == ClaimEligibility.NONE
             ):
-                errors.append(
-                    f"{item.id} targets requirement with no claim eligibility: "
-                    f"{requirement_ref}"
+                issues.append(
+                    ValidationIssue(
+                        code="planning.claim_not_eligible",
+                        message=(
+                            f"{item.id} targets requirement with no "
+                            f"claim eligibility: {requirement_ref}"
+                        ),
+                        stage=ValidationStage.PLANNING,
+                        references=[item.id, requirement_ref],
+                    )
                 )
 
-    return errors
+    return issues
 
 
 def validate_draft_plan_references(
     content_plan: CVContentPlan,
     cv_draft: CVDraft,
-) -> list[str]:
-    errors: list[str] = []
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
 
     planned_items_by_id = {
         item.id: item for item in content_plan.planned_items
@@ -158,18 +208,25 @@ def validate_draft_plan_references(
         planned_item = planned_items_by_id.get(claim.plan_item_ref)
 
         if planned_item is None:
-            errors.append(
-                f"{claim.id} references unknown planned content item: "
-                f"{claim.plan_item_ref}"
+            issues.append(
+                ValidationIssue(
+                    code="draft.unknown_plan_item",
+                    message=(
+                        f"{claim.id} references unknown planned content item: "
+                        f"{claim.plan_item_ref}"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[claim.id, claim.plan_item_ref],
+                )
             )
 
-    return errors
+    return issues
 
 def validate_draft_plan_alignment(
     content_plan: CVContentPlan,
     cv_draft: CVDraft,
-) -> list[str]:
-    errors: list[str] = []
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
 
     planned_items_by_id = {
         item.id: item for item in content_plan.planned_items
@@ -183,9 +240,16 @@ def validate_draft_plan_alignment(
             continue
 
         if planned_item.inclusion_status == InclusionStatus.OMIT:
-            errors.append(
-                f"{claim.id} references omitted planned content item: "
-                f"{claim.plan_item_ref}"
+            issues.append(
+                ValidationIssue(
+                    code="draft.omitted_plan_item",
+                    message=(
+                        f"{claim.id} references omitted planned content item: "
+                        f"{claim.plan_item_ref}"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[claim.id, claim.plan_item_ref],
+                )
             )
             continue
 
@@ -194,31 +258,59 @@ def validate_draft_plan_alignment(
 
         for requirement_ref in claim.requirement_refs:
             if requirement_ref not in approved_requirement_refs:
-                errors.append(
-                    f"{claim.id} uses requirement not approved by "
-                    f"{claim.plan_item_ref}: {requirement_ref}"
+                issues.append(
+                    ValidationIssue(
+                        code="draft.requirement_not_approved",
+                        message=(
+                            f"{claim.id} uses requirement not approved by "
+                            f"{claim.plan_item_ref}: {requirement_ref}"
+                        ),
+                        stage=ValidationStage.DRAFT,
+                        references=[
+                            claim.id,
+                            claim.plan_item_ref,
+                            requirement_ref,
+                        ],
+                    )
                 )
 
         for evidence_ref in claim.evidence_refs:
             if evidence_ref not in approved_evidence_refs:
-                errors.append(
-                    f"{claim.id} uses evidence not approved by "
-                    f"{claim.plan_item_ref}: {evidence_ref}"
+                issues.append(
+                    ValidationIssue(
+                        code="draft.evidence_not_approved",
+                        message=(
+                            f"{claim.id} uses evidence not approved by "
+                            f"{claim.plan_item_ref}: {evidence_ref}"
+                        ),
+                        stage=ValidationStage.DRAFT,
+                        references=[
+                            claim.id,
+                            claim.plan_item_ref,
+                            evidence_ref,
+                        ],
+                    )
                 )
 
-    return errors
+    return issues
 
 def validate_draft_against_candidate_profile(
     candidate_profile: CandidateProfile,
     cv_draft: CVDraft,
-) -> list[str]:
-    errors: list[str] = []
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
 
     # Header
     identity = candidate_profile.identity
 
     if cv_draft.header.full_name != identity.full_name:
-        errors.append("draft header full name does not match CandidateProfile")
+        issues.append(
+                        ValidationIssue(
+                code="draft.header_name_mismatch",
+                message="draft header full name does not match CandidateProfile",
+                stage=ValidationStage.DRAFT,
+            )
+        )
 
     optional_header_fields = ("location", "email", "phone")
 
@@ -227,14 +319,29 @@ def validate_draft_against_candidate_profile(
         profile_value = getattr(identity, field_name)
 
         if draft_value is not None and draft_value != profile_value:
-            errors.append(
-                f"draft header {field_name} does not match CandidateProfile"
+            issues.append(
+                ValidationIssue(
+                    code="draft.header_field_mismatch",
+                    message=(
+                        f"draft header {field_name} "
+                        "does not match CandidateProfile"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[field_name],
+                )
             )
 
     for link in cv_draft.header.professional_links:
         if link not in identity.professional_links:
-            errors.append(
-                f"draft header contains unknown professional link: {link}"
+            issues.append(
+                ValidationIssue(
+                    code="draft.unknown_professional_link",
+                    message=(
+                        f"draft header contains unknown professional link: {link}"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[link],
+                )
             )
 
     # Experiences
@@ -247,31 +354,59 @@ def validate_draft_against_candidate_profile(
         source_experience = experiences_by_id.get(draft_experience.source_entity_ref)
 
         if source_experience is None:
-            errors.append(
-                "draft experience references unknown candidate experience: "
-                f"{draft_experience.source_entity_ref}"
+            issues.append(
+                ValidationIssue(
+                    code="draft.unknown_candidate_experience",
+                    message=(
+                        "draft experience references unknown candidate experience: "
+                        f"{draft_experience.source_entity_ref}"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[draft_experience.source_entity_ref],
+                )
             )
             continue
 
         if draft_experience.role_title != source_experience.role_title:
-            errors.append(
-                f"{draft_experience.source_entity_ref} role title "
-                "does not match CandidateProfile"
+            issues.append(
+                ValidationIssue(
+                    code="draft.experience_role_mismatch",
+                    message=(
+                        f"{draft_experience.source_entity_ref} role title "
+                        "does not match CandidateProfile"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[draft_experience.source_entity_ref],
+                )
             )
 
         if draft_experience.organization != source_experience.organization:
-            errors.append(
-                f"{draft_experience.source_entity_ref} organization "
-                "does not match CandidateProfile"
+            issues.append(
+                ValidationIssue(
+                    code="draft.experience_organization_mismatch",
+                    message=(
+                        f"{draft_experience.source_entity_ref} organization "
+                        "does not match CandidateProfile"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[draft_experience.source_entity_ref],
+                )
             )
 
         if (
             draft_experience.location is not None
             and draft_experience.location != source_experience.location
         ):
-            errors.append(
-                f"{draft_experience.source_entity_ref} location "
-                "does not match CandidateProfile"
+            issues.append(
+                ValidationIssue(
+                    code="draft.experience_location_mismatch",
+                    message=(
+                        f"{draft_experience.source_entity_ref} location "
+                        "does not match CandidateProfile"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[draft_experience.source_entity_ref],
+                )
             )
 
     # Education
@@ -281,43 +416,78 @@ def validate_draft_against_candidate_profile(
     }
 
     for draft_education in cv_draft.education:
-        source = education_by_id.get(draft_education.source_entity_ref)
+        source_education = education_by_id.get(draft_education.source_entity_ref)
 
-        if source is None:
-            errors.append(
-                "draft education references unknown candidate education: "
-                f"{draft_education.source_entity_ref}"
+        if source_education is None:
+            issues.append(
+                ValidationIssue(
+                    code="draft.unknown_candidate_education",
+                    message=(
+                        "draft education references unknown candidate education: "
+                        f"{draft_education.source_entity_ref}"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[draft_education.source_entity_ref],
+                )
             )
             continue
 
-        if draft_education.degree != source.degree:
-            errors.append(
-                f"{draft_education.source_entity_ref} degree "
-                "does not match CandidateProfile"
+        if draft_education.degree != source_education.degree:
+            issues.append(
+                ValidationIssue(
+                    code="draft.education_degree_mismatch",
+                    message=(
+                        f"{draft_education.source_entity_ref} degree "
+                        "does not match CandidateProfile"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[draft_education.source_entity_ref],
+                )
             )
 
-        if draft_education.field != source.field:
-            errors.append(
-                f"{draft_education.source_entity_ref} field "
-                "does not match CandidateProfile"
+        if draft_education.field != source_education.field:
+            issues.append(
+                ValidationIssue(
+                    code="draft.education_field_mismatch",
+                    message=(
+                        f"{draft_education.source_entity_ref} field "
+                        "does not match CandidateProfile"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[draft_education.source_entity_ref],
+                )
             )
 
-        if draft_education.institution != source.institution:
-            errors.append(
-                f"{draft_education.source_entity_ref} institution "
-                "does not match CandidateProfile"
+        if draft_education.institution != source_education.institution:
+            issues.append(
+                ValidationIssue(
+                    code="draft.education_institution_mismatch",
+                    message=(
+                        f"{draft_education.source_entity_ref} institution "
+                        "does not match CandidateProfile"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[draft_education.source_entity_ref],
+                )
             )
 
         if (
             draft_education.location is not None
-            and draft_education.location != source.location
+            and draft_education.location != source_education.location
         ):
-            errors.append(
-                f"{draft_education.source_entity_ref} location "
-                "does not match CandidateProfile"
+            issues.append(
+                ValidationIssue(
+                    code="draft.education_location_mismatch",
+                    message=(
+                        f"{draft_education.source_entity_ref} location "
+                        "does not match CandidateProfile"
+                    ),
+                    stage=ValidationStage.DRAFT,
+                    references=[draft_education.source_entity_ref],
+                )
             )
 
-    return errors
+    return issues
 
 def validate_pipeline_contracts(
     candidate_profile: CandidateProfile,
@@ -325,17 +495,17 @@ def validate_pipeline_contracts(
     evidence_map: EvidenceMap,
     content_plan: CVContentPlan,
     cv_draft: CVDraft,
-) -> list[str]:
-    errors: list[str] = []
+) -> ValidationReport:
+    issues: list[ValidationIssue] = []
 
-    errors.extend(
+    issues.extend(
         validate_evidence_map_against_job_spec(
             job_spec,
             evidence_map,
         )
     )
 
-    errors.extend(
+    issues.extend(
         validate_content_plan_references(
             job_spec,
             evidence_map,
@@ -343,39 +513,39 @@ def validate_pipeline_contracts(
         )
     )
 
-    errors.extend(
+    issues.extend(
         validate_content_plan_evidence_alignment(
             evidence_map,
             content_plan,
         )
     )
 
-    errors.extend(
+    issues.extend(
         validate_content_plan_claim_eligibility(
             evidence_map,
             content_plan,
         )
     )
 
-    errors.extend(
+    issues.extend(
         validate_draft_plan_references(
             content_plan,
             cv_draft,
         )
     )
 
-    errors.extend(
+    issues.extend(
         validate_draft_plan_alignment(
             content_plan,
             cv_draft,
         )
     )
 
-    errors.extend(
+    issues.extend(
         validate_draft_against_candidate_profile(
             candidate_profile,
             cv_draft,
         )
     )
 
-    return errors
+    return ValidationReport(issues=issues)

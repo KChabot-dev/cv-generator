@@ -83,3 +83,16 @@ The first implementation of the core domain layer is complete:
 5. `CVDraft` — exact proposed CV content with claim-level provenance.
 
 The domain layer establishes the contracts that later pipeline components must respect.
+
+## Cross-Model Validation
+
+- Individual Pydantic models can validate only information available inside their own boundaries.
+- Relationships between domain models require a separate cross-model validation layer.
+- Cross-model validation protects reference integrity across `JobSpec`, `EvidenceMap`, `CVContentPlan`, `CVDraft`, and `CandidateProfile`.
+- Validation progresses beyond checking whether IDs exist: it also verifies that evidence is approved for a requirement, claims are eligible, draft claims stay within their content-plan boundaries, and canonical candidate facts are not altered.
+- Validation errors were initially represented as `list[str]` to establish behavior with minimal abstraction.
+- As validation became a subsystem, raw strings were replaced with structured `ValidationIssue` objects containing stable codes, stages, severities, references, and human-readable messages.
+- Individual validators return `list[ValidationIssue]`.
+- `validate_pipeline_contracts()` aggregates those issues into a `ValidationReport`.
+- `ValidationReport.is_valid` provides the application-level decision about whether the pipeline may continue.
+- Structured validation results will later support logging, debugging, and targeted LLM retry behavior without parsing human-readable error strings.

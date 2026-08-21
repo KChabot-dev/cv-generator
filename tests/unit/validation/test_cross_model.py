@@ -14,6 +14,7 @@ from cv_generator.validation.cross_model import (
     validate_evidence_map_against_job_spec,
     validate_pipeline_contracts,
 )
+import cv_generator.validation.result as result
 
 
 def test_evidence_map_reports_missing_and_unknown_requirements() -> None:
@@ -61,15 +62,18 @@ def test_evidence_map_reports_missing_and_unknown_requirements() -> None:
         ]
     )
 
-    errors = validate_evidence_map_against_job_spec(
+    issues = validate_evidence_map_against_job_spec(
         job_spec,
         evidence_map,
     )
 
-    assert errors == [
-        "EvidenceMap references unknown requirement: REQ-999",
-        "Job requirement has no evidence assessment: REQ-002",
+    assert [issue.code for issue in issues] == [
+        "evidence.unknown_requirement",
+        "evidence.missing_assessment",
     ]
+
+    assert issues[0].references == ["REQ-999"]
+    assert issues[1].references == ["REQ-002"]
 
 def test_content_plan_reports_unknown_requirement_and_evidence_refs() -> None:
     job_spec = job.JobSpec(
@@ -128,16 +132,20 @@ def test_content_plan_reports_unknown_requirement_and_evidence_refs() -> None:
         ],
     )
 
-    errors = validate_content_plan_references(
+    issues = validate_content_plan_references(
         job_spec,
         evidence_map,
         content_plan,
     )
 
-    assert errors == [
-        "PLAN-001 references unknown requirement: REQ-999",
-        "PLAN-001 references unknown evidence scenario: SCEN-999",
+    assert [issue.code for issue in issues] == [
+        "planning.unknown_requirement",
+        "planning.unknown_evidence_scenario",
     ]
+
+    assert issues[0].references == ["PLAN-001", "REQ-999"]
+    assert issues[1].references == ["PLAN-001", "SCEN-999"]
+
 
 def test_content_plan_requires_evidence_aligned_with_each_requirement() -> None:
     source = evidence.SourceItem(
@@ -206,14 +214,16 @@ def test_content_plan_requires_evidence_aligned_with_each_requirement() -> None:
         ],
     )
 
-    errors = validate_content_plan_evidence_alignment(
+    issues = validate_content_plan_evidence_alignment(
         evidence_map,
         content_plan,
     )
 
-    assert errors == [
-        "PLAN-001 has no approved evidence for requirement: REQ-001"
+    assert [issue.code for issue in issues] == [
+        "planning.evidence_not_aligned"
     ]
+
+    assert issues[0].references == ["PLAN-001", "REQ-001"]
 
 def test_content_plan_rejects_claim_ineligible_requirement() -> None:
     evidence_map = evidence.EvidenceMap(
@@ -250,14 +260,17 @@ def test_content_plan_rejects_claim_ineligible_requirement() -> None:
         ],
     )
 
-    errors = validate_content_plan_claim_eligibility(
+    issues = validate_content_plan_claim_eligibility(
         evidence_map,
         content_plan,
     )
 
-    assert errors == [
-        "PLAN-001 targets requirement with no claim eligibility: REQ-001"
+    assert [issue.code for issue in issues] == [
+        "planning.claim_not_eligible"
     ]
+
+    assert issues[0].references == ["PLAN-001", "REQ-001"]
+
 def test_omitted_content_may_reference_claim_ineligible_requirement() -> None:
     evidence_map = evidence.EvidenceMap(
         assessments=[
@@ -331,14 +344,16 @@ def test_draft_reports_unknown_plan_item_reference() -> None:
         ],
     )
 
-    errors = validate_draft_plan_references(
+    issues = validate_draft_plan_references(
         content_plan,
         cv_draft,
     )
 
-    assert errors == [
-        "CLAIM-001 references unknown planned content item: PLAN-999"
+    assert [issue.code for issue in issues] == [
+        "draft.unknown_plan_item"
     ]
+
+    assert issues[0].references == ["CLAIM-001", "PLAN-999"]
 
 def test_draft_claim_cannot_exceed_plan_item_boundaries() -> None:
     content_plan = planning.CVContentPlan(
@@ -386,14 +401,26 @@ def test_draft_claim_cannot_exceed_plan_item_boundaries() -> None:
         ],
     )
 
-    errors = validate_draft_plan_alignment(
+    issues = validate_draft_plan_alignment(
         content_plan,
         cv_draft,
     )
 
-    assert errors == [
-        "CLAIM-001 uses requirement not approved by PLAN-001: REQ-999",
-        "CLAIM-001 uses evidence not approved by PLAN-001: SCEN-999",
+    assert [issue.code for issue in issues] == [
+        "draft.requirement_not_approved",
+        "draft.evidence_not_approved",
+    ]
+
+    assert issues[0].references == [
+        "CLAIM-001",
+        "PLAN-001",
+        "REQ-999",
+    ]
+
+    assert issues[1].references == [
+        "CLAIM-001",
+        "PLAN-001",
+        "SCEN-999",
     ]
 
 def test_draft_claim_cannot_use_omitted_plan_item() -> None:
@@ -439,11 +466,18 @@ def test_draft_claim_cannot_use_omitted_plan_item() -> None:
         ],
     )
 
-    assert validate_draft_plan_alignment(
+    issues = validate_draft_plan_alignment(
         content_plan,
         cv_draft,
-    ) == [
-        "CLAIM-001 references omitted planned content item: PLAN-001"
+    )
+
+    assert [issue.code for issue in issues] == [
+        "draft.omitted_plan_item"
+    ]
+
+    assert issues[0].references == [
+        "CLAIM-001",
+        "PLAN-001",
     ]
 
 def test_draft_reports_candidate_fact_mismatch() -> None:
@@ -485,14 +519,16 @@ def test_draft_reports_candidate_fact_mismatch() -> None:
         ],
     )
 
-    errors = validate_draft_against_candidate_profile(
+    issues = validate_draft_against_candidate_profile(
         candidate_profile,
         cv_draft,
     )
 
-    assert errors == [
-        "EDU-001 field does not match CandidateProfile"
+    assert [issue.code for issue in issues] == [
+        "draft.education_field_mismatch"
     ]
+
+    assert issues[0].references == ["EDU-001"]
 
 def test_valid_pipeline_contracts_produce_no_errors() -> None:
     candidate_profile = candidate.CandidateProfile(
@@ -627,7 +663,7 @@ def test_valid_pipeline_contracts_produce_no_errors() -> None:
         ],
     )
 
-    errors = validate_pipeline_contracts(
+    report = validate_pipeline_contracts(
         candidate_profile,
         job_spec,
         evidence_map,
@@ -635,4 +671,58 @@ def test_valid_pipeline_contracts_produce_no_errors() -> None:
         cv_draft,
     )
 
-    assert errors == []
+    assert report.is_valid
+    assert report.issues == []
+
+def test_pipeline_report_is_invalid_when_contract_fails() -> None:
+    candidate_profile = candidate.CandidateProfile(
+        identity=candidate.CandidateIdentity(
+            full_name="Kevin Chabot",
+        )
+    )
+
+    job_spec = job.JobSpec(
+        metadata=job.JobMetadata(
+            title="Scientific Software Engineer",
+            company="Example Company",
+        )
+    )
+
+    evidence_map = evidence.EvidenceMap()
+
+    content_plan = planning.CVContentPlan(
+        application_target=planning.ApplicationTarget(
+            job_title="Scientific Software Engineer",
+            company="Example Company",
+            job_spec_reference="JOB-001",
+        ),
+        document_strategy=planning.DocumentStrategy(
+            primary_positioning="Scientific software engineer",
+        ),
+    )
+
+    cv_draft = draft.CVDraft(
+        application_reference=draft.ApplicationReference(
+            company="Example Company",
+            job_title="Scientific Software Engineer",
+            job_spec_ref="JOB-001",
+            content_plan_ref="PLAN-DOC-001",
+        ),
+        header=draft.CandidateHeader(
+            full_name="Wrong Name",
+        ),
+    )
+
+    report = validate_pipeline_contracts(
+        candidate_profile,
+        job_spec,
+        evidence_map,
+        content_plan,
+        cv_draft,
+    )
+
+    assert not report.is_valid
+
+    assert [issue.code for issue in report.issues] == [
+        "draft.header_name_mismatch"
+    ]

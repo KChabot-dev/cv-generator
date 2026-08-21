@@ -1,6 +1,6 @@
 ## Current Phase
 
-Implementation — Cross-model validation and artifact persistence.
+Implementation — Intermediate artifact persistence.
 
 ## Completed
 
@@ -77,6 +77,17 @@ Implementation — Cross-model validation and artifact persistence.
 - JSON serialization/deserialization round trips
 - Ruff, mypy, and pytest quality checks
 
+### Cross-Model Validation
+- `JobSpec` ↔ `EvidenceMap` requirement completeness and reference validation
+- `EvidenceMap` ↔ `CVContentPlan` reference and evidence-alignment validation
+- Claim-eligibility enforcement
+- `CVContentPlan` ↔ `CVDraft` plan-reference and claim-boundary validation
+- `CandidateProfile` ↔ `CVDraft` canonical-fact validation
+- Structured `ValidationIssue` model
+- `ValidationReport` aggregation
+- Pipeline-wide validation gate
+- Aggregate valid and invalid pipeline tests
+  
 ## Next
 
 1. Implement cross-model validation between the five domain models.
