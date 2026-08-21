@@ -7,6 +7,7 @@ from cv_generator.domain.evidence import (
 from cv_generator.domain.job import JobSpec
 from cv_generator.domain.planning import (
     CVContentPlan,
+    ContentType,
     InclusionStatus,
 )
 from cv_generator.validation.result import (
@@ -499,6 +500,13 @@ def validate_pipeline_contracts(
     issues: list[ValidationIssue] = []
 
     issues.extend(
+        validate_content_plan_against_candidate_profile(
+            candidate_profile,
+            content_plan,
+        )
+    )
+    
+    issues.extend(
         validate_evidence_map_against_job_spec(
             job_spec,
             evidence_map,
@@ -549,3 +557,73 @@ def validate_pipeline_contracts(
     )
 
     return ValidationReport(issues=issues)
+
+def validate_content_plan_against_candidate_profile(
+    candidate_profile: CandidateProfile,
+    content_plan: CVContentPlan,
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+
+    known_experience_ids = {
+        experience.id for experience in candidate_profile.experiences
+    }
+
+    known_education_ids = {
+        education.id for education in candidate_profile.education
+    }
+
+    for item in content_plan.planned_items:
+        if item.content_type in {
+            ContentType.EXPERIENCE_ENTRY,
+            ContentType.EXPERIENCE_BULLET,
+        }:
+            if item.source_entity_ref is None:
+                issues.append(
+                    ValidationIssue(
+                        code="planning.missing_experience_source",
+                        message=(
+                            f"{item.id} has no candidate experience source"
+                        ),
+                        stage=ValidationStage.PLANNING,
+                        references=[item.id],
+                    )
+                )
+            elif item.source_entity_ref not in known_experience_ids:
+                issues.append(
+                    ValidationIssue(
+                        code="planning.unknown_candidate_experience",
+                        message=(
+                            f"{item.id} references unknown candidate experience: "
+                            f"{item.source_entity_ref}"
+                        ),
+                        stage=ValidationStage.PLANNING,
+                        references=[item.id, item.source_entity_ref],
+                    )
+                )
+
+        elif item.content_type == ContentType.EDUCATION_ENTRY:
+            if item.source_entity_ref is None:
+                issues.append(
+                    ValidationIssue(
+                        code="planning.missing_education_source",
+                        message=(
+                            f"{item.id} has no candidate education source"
+                        ),
+                        stage=ValidationStage.PLANNING,
+                        references=[item.id],
+                    )
+                )
+            elif item.source_entity_ref not in known_education_ids:
+                issues.append(
+                    ValidationIssue(
+                        code="planning.unknown_candidate_education",
+                        message=(
+                            f"{item.id} references unknown candidate education: "
+                            f"{item.source_entity_ref}"
+                        ),
+                        stage=ValidationStage.PLANNING,
+                        references=[item.id, item.source_entity_ref],
+                    )
+                )
+
+    return issues

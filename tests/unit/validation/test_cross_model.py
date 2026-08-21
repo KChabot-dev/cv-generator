@@ -5,6 +5,7 @@ import cv_generator.domain.evidence as evidence
 import cv_generator.domain.job as job
 import cv_generator.domain.planning as planning
 from cv_generator.validation.cross_model import (
+    validate_content_plan_against_candidate_profile,
     validate_content_plan_claim_eligibility,
     validate_content_plan_evidence_alignment,
     validate_content_plan_references,
@@ -14,7 +15,13 @@ from cv_generator.validation.cross_model import (
     validate_evidence_map_against_job_spec,
     validate_pipeline_contracts,
 )
+
 import cv_generator.validation.result as result
+from tests.factories import (
+    make_candidate_profile,
+    make_content_plan,
+    make_valid_pipeline,
+)
 
 
 def test_evidence_map_reports_missing_and_unknown_requirements() -> None:
@@ -531,148 +538,19 @@ def test_draft_reports_candidate_fact_mismatch() -> None:
     assert issues[0].references == ["EDU-001"]
 
 def test_valid_pipeline_contracts_produce_no_errors() -> None:
-    candidate_profile = candidate.CandidateProfile(
-        identity=candidate.CandidateIdentity(
-            full_name="Kevin Chabot",
-        ),
-        experiences=[
-            candidate.ExperienceRecord(
-                id="EXP-001",
-                role_title="Graduate Researcher",
-                organization="Université de Sherbrooke",
-                start_date=common.PartialDate(year=2018),
-                end_date=common.PartialDate(year=2026),
-            )
-        ],
-    )
-
-    job_spec = job.JobSpec(
-        metadata=job.JobMetadata(
-            title="Scientific Software Engineer",
-            company="Example Company",
-        ),
-        requirements=[
-            job.JobRequirement(
-                id="REQ-001",
-                category=job.RequirementCategory.TECHNICAL_SKILL,
-                description="Python",
-                priority=job.RequirementPriority.REQUIRED,
-                explicitness=job.RequirementExplicitness.EXPLICIT,
-                source_text="Strong Python experience required.",
-            )
-        ],
-    )
-
-    source = evidence.SourceItem(
-        source_document="skills.md",
-        supporting_text="Developed scientific Python workflows.",
-        source_type=evidence.SourceType.SKILL,
-    )
-
-    evidence_map = evidence.EvidenceMap(
-        scenarios=[
-            evidence.EvidenceScenario(
-                id="SCEN-001",
-                summary="Scientific Python development",
-                source_items=[source],
-            )
-        ],
-        assessments=[
-            evidence.EvidenceAssessment(
-                requirement_id="REQ-001",
-                scenario_matches=[
-                    evidence.ScenarioMatch(
-                        scenario_ref="SCEN-001",
-                        relevance=evidence.ScenarioRelevance.DIRECT,
-                    )
-                ],
-                capability_assessment=evidence.CapabilityAssessment(
-                    depth=evidence.CapabilityDepth.WORKING,
-                    repetition=evidence.RepetitionLevel.HIGH,
-                    confidence=evidence.ConfidenceLevel.HIGH,
-                    capability_summary="Practical Python development.",
-                ),
-                requirement_match=evidence.RequirementMatch(
-                    match_strength=evidence.MatchStrength.STRONG,
-                    claim_eligibility=evidence.ClaimEligibility.DIRECT,
-                    allowed_claim_scope="Practical Python development",
-                ),
-            )
-        ],
-    )
-
-    content_plan = planning.CVContentPlan(
-        application_target=planning.ApplicationTarget(
-            job_title="Scientific Software Engineer",
-            company="Example Company",
-            job_spec_reference="JOB-001",
-        ),
-        document_strategy=planning.DocumentStrategy(
-            primary_positioning="Scientific software engineer",
-        ),
-        planned_items=[
-            planning.PlannedContentItem(
-                id="PLAN-001",
-                target_section=planning.CVSection.EXPERIENCE,
-                content_type=planning.ContentType.EXPERIENCE_BULLET,
-                source_entity_ref="EXP-001",
-                requirement_refs=["REQ-001"],
-                evidence_refs=["SCEN-001"],
-                purpose="Demonstrate Python development.",
-                priority=planning.PlanningPriority.HIGH,
-                inclusion_status=planning.InclusionStatus.INCLUDE,
-                allowed_claim_scope="Practical Python development",
-            )
-        ],
-    )
-
-    cv_draft = draft.CVDraft(
-        application_reference=draft.ApplicationReference(
-            company="Example Company",
-            job_title="Scientific Software Engineer",
-            job_spec_ref="JOB-001",
-            content_plan_ref="PLAN-DOC-001",
-        ),
-        header=draft.CandidateHeader(
-            full_name="Kevin Chabot",
-        ),
-        experiences=[
-            draft.DraftExperience(
-                source_entity_ref="EXP-001",
-                role_title="Graduate Researcher",
-                organization="Université de Sherbrooke",
-                date_text="2018–2026",
-                bullets=[
-                    draft.ExperienceBullet(
-                        text="Developed scientific Python workflows.",
-                        claim_refs=["CLAIM-001"],
-                    )
-                ],
-            )
-        ],
-        claims=[
-            draft.DraftClaim(
-                id="CLAIM-001",
-                text="Developed scientific Python workflows.",
-                plan_item_ref="PLAN-001",
-                basis=draft.ClaimBasis.MIXED,
-                source_entity_refs=["EXP-001"],
-                requirement_refs=["REQ-001"],
-                evidence_refs=["SCEN-001"],
-            )
-        ],
-    )
+    pipeline = make_valid_pipeline()
 
     report = validate_pipeline_contracts(
-        candidate_profile,
-        job_spec,
-        evidence_map,
-        content_plan,
-        cv_draft,
+        pipeline.candidate_profile,
+        pipeline.job_spec,
+        pipeline.evidence_map,
+        pipeline.content_plan,
+        pipeline.cv_draft,
     )
 
     assert report.is_valid
     assert report.issues == []
+
 
 def test_pipeline_report_is_invalid_when_contract_fails() -> None:
     candidate_profile = candidate.CandidateProfile(
@@ -725,4 +603,32 @@ def test_pipeline_report_is_invalid_when_contract_fails() -> None:
 
     assert [issue.code for issue in report.issues] == [
         "draft.header_name_mismatch"
+    ]
+
+def test_content_plan_rejects_unknown_candidate_experience() -> None:
+    candidate_profile = make_candidate_profile()
+    content_plan = make_content_plan()
+
+    original_item = content_plan.planned_items[0]
+
+    invalid_item = original_item.model_copy(
+        update={"source_entity_ref": "EXP-999"}
+    )
+
+    invalid_plan = content_plan.model_copy(
+        update={"planned_items": [invalid_item]}
+    )
+
+    issues = validate_content_plan_against_candidate_profile(
+        candidate_profile,
+        invalid_plan,
+    )
+
+    assert [issue.code for issue in issues] == [
+        "planning.unknown_candidate_experience"
+    ]
+
+    assert issues[0].references == [
+        "PLAN-001",
+        "EXP-999",
     ]

@@ -98,9 +98,19 @@ Implementation — Application pipeline services.
 - `ArtifactStore` facade
 - Filesystem persistence tests
   
-## Next
+### Application Services — In Progress
 
-1. Implement cross-model validation between the five domain models.
-2. Validate stable references across model boundaries.
-3. Implement intermediate JSON artifact persistence.
-4. Build pipeline/application services on top of the validated domain layer.
+Completed:
+- Test factories for coherent pipeline artifacts
+- Shared pytest `ArtifactStore` fixture
+- AI-provider-independent application ports using `Protocol`
+- Job analysis orchestration and persistence
+- Evidence matching, validation, and persistence
+- CV content planning, validation, and persistence
+- CandidateProfile-to-CVContentPlan source reference validation
+- 
+
+Next:
+- CV writing application service
+- Draft validation and persistence
+- End-to-end pipeline orchestration
