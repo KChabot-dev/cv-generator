@@ -6,10 +6,11 @@ from cv_generator.domain.evidence import (
 )
 from cv_generator.domain.job import JobSpec
 from cv_generator.domain.planning import (
-    CVContentPlan,
     ContentType,
+    CVContentPlan,
     InclusionStatus,
 )
+from cv_generator.domain.portfolio import PortfolioContext
 from cv_generator.validation.result import (
     ValidationIssue,
     ValidationReport,
@@ -67,6 +68,37 @@ def validate_evidence_map_against_job_spec(
 
     return issues
 
+def validate_evidence_sources_against_portfolio(
+    portfolio_context: PortfolioContext,
+    evidence_map: EvidenceMap,
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+
+    known_source_ids = {
+        document.source_id
+        for document in portfolio_context.documents
+    }
+
+    for scenario in evidence_map.scenarios:
+        for source_item in scenario.source_items:
+            if source_item.source_document not in known_source_ids:
+                issues.append(
+                    ValidationIssue(
+                        code="evidence.unknown_source_document",
+                        message=(
+                            f"{scenario.id} references portfolio document "
+                            f"that was not provided: "
+                            f"{source_item.source_document}"
+                        ),
+                        stage=ValidationStage.EVIDENCE,
+                        references=[
+                            scenario.id,
+                            source_item.source_document,
+                        ],
+                    )
+                )
+
+    return issues
 
 def validate_content_plan_references(
     job_spec: JobSpec,

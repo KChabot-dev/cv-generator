@@ -1,11 +1,3 @@
-from cv_generator.domain.candidate import CandidateProfile
-from cv_generator.domain.draft import CVDraft
-from cv_generator.domain.evidence import EvidenceMap
-from cv_generator.domain.job import JobSpec
-from cv_generator.domain.planning import CVContentPlan
-from cv_generator.persistence.artifact_store import ArtifactStore
-from cv_generator.validation.cross_model import validate_pipeline_contracts
-from cv_generator.validation.result import ValidationReport
 from cv_generator.application.cv_planning import (
     plan_validate_and_store_content,
 )
@@ -22,6 +14,15 @@ from cv_generator.application.ports import (
     EvidenceMatcher,
     JobAnalyzer,
 )
+from cv_generator.domain.candidate import CandidateProfile
+from cv_generator.domain.draft import CVDraft
+from cv_generator.domain.evidence import EvidenceMap
+from cv_generator.domain.job import JobSpec
+from cv_generator.domain.planning import CVContentPlan
+from cv_generator.domain.portfolio import PortfolioContext
+from cv_generator.persistence.artifact_store import ArtifactStore
+from cv_generator.validation.cross_model import validate_pipeline_contracts
+from cv_generator.validation.result import ValidationReport
 
 
 def validate_and_store_draft(
@@ -53,6 +54,7 @@ def run_pipeline(
     run_id: str,
     job_text: str,
     candidate_profile: CandidateProfile,
+    portfolio_context: PortfolioContext,
     analyzer: JobAnalyzer,
     matcher: EvidenceMatcher,
     planner: CVPlanner,
@@ -69,6 +71,7 @@ def run_pipeline(
     evidence_map, evidence_report = match_validate_and_store_evidence(
         run_id,
         job_spec,
+        portfolio_context,
         matcher,
         store,
     )

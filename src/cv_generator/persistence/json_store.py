@@ -1,9 +1,7 @@
 from pathlib import Path
-from typing import TypeVar
 
 from pydantic import BaseModel
 
-ModelT = TypeVar("ModelT", bound=BaseModel)
 
 def save_json(model: BaseModel, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -13,7 +11,8 @@ def save_json(model: BaseModel, path: Path) -> None:
         encoding="utf-8",
     )
 
-def load_json(
+
+def load_json[ModelT: BaseModel](
     model_type: type[ModelT],
     path: Path,
 ) -> ModelT:

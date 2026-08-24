@@ -1,7 +1,8 @@
 from pathlib import Path
-import pytest
 
+import pytest
 from pydantic import ValidationError
+
 import cv_generator.domain.candidate as candidate
 import cv_generator.domain.common as common
 from cv_generator.persistence.json_store import load_json, save_json

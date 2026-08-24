@@ -1,10 +1,11 @@
+from dataclasses import dataclass
+
 import cv_generator.domain.candidate as candidate
 import cv_generator.domain.common as common
-import cv_generator.domain.job as job
-import cv_generator.domain.evidence as evidence
-import cv_generator.domain.planning as planning
 import cv_generator.domain.draft as draft
-from dataclasses import dataclass
+import cv_generator.domain.evidence as evidence
+import cv_generator.domain.job as job
+import cv_generator.domain.planning as planning
 
 
 def make_candidate_profile(

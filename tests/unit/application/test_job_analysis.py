@@ -1,6 +1,6 @@
 import cv_generator.domain.job as job
-from cv_generator.persistence.artifact_store import ArtifactStore
 from cv_generator.application.job_analysis import analyze_and_store_job
+from cv_generator.persistence.artifact_store import ArtifactStore
 from tests.factories import make_job_spec
 
 

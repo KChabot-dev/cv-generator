@@ -1319,3 +1319,28 @@ The design principle is:
 > Introduce complexity to solve an identified problem, not in anticipation of every possible problem.
 
 The objective is to build a reliable, understandable, testable CV Generator without unnecessary architecture.
+
+### Application Ports
+
+The application layer depends on stable interfaces rather than directly on
+LLM providers or retrieval implementations:
+
+- `JobAnalyzer`
+- `EvidenceMatcher`
+- `CVPlanner`
+- `CVWriter`
+
+Concrete implementations are injected into the pipeline.
+
+This allows tests to use deterministic fake adapters while production
+implementations can later use local models, APIs, deterministic retrieval,
+or other providers without changing the core application workflow.
+
+The CVWriter does not receive the raw JobSpec directly.
+
+The job has already been interpreted through evidence matching and content
+planning. The writer therefore operates only from the canonical candidate
+profile, approved evidence, and approved content plan.
+
+This limits the writer's ability to independently reinterpret the job
+posting or introduce unsupported claims.

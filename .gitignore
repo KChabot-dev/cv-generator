@@ -9,3 +9,10 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Generated runtime artifacts
+artifacts/
+
+# Runtime inputs and generated artifacts
+artifacts/
+job_posting.txt

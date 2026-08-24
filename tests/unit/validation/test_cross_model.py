@@ -4,6 +4,7 @@ import cv_generator.domain.draft as draft
 import cv_generator.domain.evidence as evidence
 import cv_generator.domain.job as job
 import cv_generator.domain.planning as planning
+import cv_generator.domain.portfolio as portfolio
 from cv_generator.validation.cross_model import (
     validate_content_plan_against_candidate_profile,
     validate_content_plan_claim_eligibility,
@@ -13,10 +14,9 @@ from cv_generator.validation.cross_model import (
     validate_draft_plan_alignment,
     validate_draft_plan_references,
     validate_evidence_map_against_job_spec,
+    validate_evidence_sources_against_portfolio,
     validate_pipeline_contracts,
 )
-
-import cv_generator.validation.result as result
 from tests.factories import (
     make_candidate_profile,
     make_content_plan,
@@ -81,6 +81,45 @@ def test_evidence_map_reports_missing_and_unknown_requirements() -> None:
 
     assert issues[0].references == ["REQ-999"]
     assert issues[1].references == ["REQ-002"]
+
+def test_evidence_map_reports_unknown_portfolio_source() -> None:
+    portfolio_context = portfolio.PortfolioContext(
+        documents=[
+            portfolio.PortfolioDocument(
+                source_id="04-skills/skills.md",
+                content="# Skills",
+            )
+        ]
+    )
+
+    evidence_map = evidence.EvidenceMap(
+        scenarios=[
+            evidence.EvidenceScenario(
+                id="SCEN-001",
+                summary="Scientific software development",
+                source_items=[
+                    evidence.SourceItem(
+                        source_document="04-skills/invented.md",
+                        supporting_text="Developed scientific software.",
+                        source_type=evidence.SourceType.SKILL,
+                    )
+                ],
+            )
+        ]
+    )
+
+    issues = validate_evidence_sources_against_portfolio(
+        portfolio_context,
+        evidence_map,
+    )
+
+    assert [issue.code for issue in issues] == [
+        "evidence.unknown_source_document"
+    ]
+    assert issues[0].references == [
+        "SCEN-001",
+        "04-skills/invented.md",
+    ]
 
 def test_content_plan_reports_unknown_requirement_and_evidence_refs() -> None:
     job_spec = job.JobSpec(

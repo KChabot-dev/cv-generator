@@ -1,12 +1,16 @@
 import pytest
 
-from cv_generator.application.pipeline import validate_and_store_draft
+from cv_generator.application.pipeline import run_pipeline, validate_and_store_draft
+from cv_generator.domain import (
+    candidate,
+    draft,
+    evidence,
+    job,
+    planning,
+    portfolio,
+)
 from cv_generator.persistence.artifact_store import ArtifactStore
 from tests.factories import make_cv_draft, make_valid_pipeline
-from cv_generator.application.pipeline import run_pipeline
-from cv_generator.domain import candidate, draft, evidence, job, planning
-from cv_generator.persistence.artifact_store import ArtifactStore
-from tests.factories import make_valid_pipeline
 
 
 def test_invalid_draft_saves_report_but_not_draft(
@@ -65,7 +69,11 @@ class FakeEvidenceMatcher:
     def __init__(self, result: evidence.EvidenceMap) -> None:
         self.result = result
 
-    def match(self, job_spec: job.JobSpec) -> evidence.EvidenceMap:
+    def match(
+        self,
+        job_spec: job.JobSpec,
+        portfolio_context: portfolio.PortfolioContext,
+    ) -> evidence.EvidenceMap:
         return self.result
 
 
@@ -94,6 +102,16 @@ class FakeCVWriter:
     ) -> draft.CVDraft:
         return self.result
 
+def make_portfolio_context() -> portfolio.PortfolioContext:
+    return portfolio.PortfolioContext(
+        documents=[
+            portfolio.PortfolioDocument(
+                source_id="skills.md",
+                content="# Example evidence",
+            )
+        ]
+    )
+
 def test_run_pipeline_completes_valid_end_to_end_run(
     artifact_store: ArtifactStore,
 ) -> None:
@@ -104,6 +122,7 @@ def test_run_pipeline_completes_valid_end_to_end_run(
         job_text="Synthetic scientific software engineer posting",
         candidate_profile=pipeline.candidate_profile,
         analyzer=FakeJobAnalyzer(pipeline.job_spec),
+        portfolio_context=make_portfolio_context(),
         matcher=FakeEvidenceMatcher(pipeline.evidence_map),
         planner=FakeCVPlanner(pipeline.content_plan),
         writer=FakeCVWriter(pipeline.cv_draft),
@@ -158,6 +177,7 @@ def test_run_pipeline_stops_after_invalid_evidence(
         job_text="Synthetic scientific software engineer posting",
         candidate_profile=pipeline.candidate_profile,
         analyzer=FakeJobAnalyzer(invalid_job_spec),
+        portfolio_context=make_portfolio_context(),
         matcher=FakeEvidenceMatcher(pipeline.evidence_map),
         planner=FailIfCalledPlanner(),
         writer=FailIfCalledWriter(),

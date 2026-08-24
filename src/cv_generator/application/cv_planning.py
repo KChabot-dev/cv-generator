@@ -10,7 +10,6 @@ from cv_generator.validation.cross_model import (
     validate_content_plan_evidence_alignment,
     validate_content_plan_references,
 )
-
 from cv_generator.validation.result import (
     ValidationIssue,
     ValidationReport,
