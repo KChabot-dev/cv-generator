@@ -4,6 +4,7 @@ from cv_generator.domain.job import JobSpec
 from cv_generator.domain.evidence import EvidenceMap
 from cv_generator.domain.candidate import CandidateProfile
 from cv_generator.domain.planning import CVContentPlan
+from cv_generator.domain.draft import CVDraft
 
 
 class JobAnalyzer(Protocol):
@@ -24,4 +25,13 @@ class CVPlanner(Protocol):
         job_spec: JobSpec,
         evidence_map: EvidenceMap,
     ) -> CVContentPlan:
+        ...
+
+class CVWriter(Protocol):
+    def write(
+        self,
+        candidate_profile: CandidateProfile,
+        evidence_map: EvidenceMap,
+        content_plan: CVContentPlan,
+    ) -> CVDraft:
         ...
