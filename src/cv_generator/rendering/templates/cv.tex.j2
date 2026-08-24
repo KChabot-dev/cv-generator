@@ -1,0 +1,152 @@
+\documentclass[10pt,letterpaper]{article}
+
+\usepackage[
+    top=0.55in,
+    bottom=0.55in,
+    left=0.55in,
+    right=0.55in
+]{geometry}
+
+\usepackage{fontspec}
+\usepackage{xcolor}
+\usepackage{paracol}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{ragged2e}
+
+\pagestyle{empty}
+
+\definecolor{sidebargray}{HTML}{F1F1F1}
+\definecolor{textgray}{HTML}{333333}
+\definecolor{mutedgray}{HTML}{666666}
+
+\setmainfont{Arial}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+
+\hypersetup{
+    colorlinks=true,
+    urlcolor=textgray,
+    linkcolor=textgray
+}
+
+\newcommand{\sectiontitle}[1]{%
+    \vspace{0.7em}%
+    {\large\bfseries\MakeUppercase{#1}}%
+    \vspace{0.35em}%
+}
+
+\begin{document}
+
+\color{textgray}
+
+% ============================================================
+% HEADER
+% ============================================================
+
+\begin{center}
+
+{\fontsize{23}{27}\selectfont
+\bfseries
+\MakeUppercase{
+((( cv.header.full_name | latex )))
+}
+}
+
+\vspace{0.25em}
+
+{\large
+SCIENTIFIC SOFTWARE ENGINEER
+}
+
+\vspace{0.25em}
+
+{\small\color{mutedgray}
+Scientific computing
+\enspace$\bullet$\enspace
+Automation
+\enspace$\bullet$\enspace
+Instrumentation
+\enspace$\bullet$\enspace
+R\&D
+}
+
+\end{center}
+
+\vspace{0.6em}
+
+% ============================================================
+% BODY
+% ============================================================
+
+\columnratio{0.29,0.71}
+\setlength{\columnsep}{1.2em}
+
+\begin{paracol}{2}
+
+% ----------------------------
+% LEFT SIDEBAR
+% ----------------------------
+
+\colorbox{sidebargray}{
+\begin{minipage}[t][0.72\textheight][t]{0.92\linewidth}
+
+\sectiontitle{Contact}
+
+{\small
+((( cv.header.email | latex )))
+
+\vspace{0.35em}
+
+((( cv.header.location | latex )))
+
+\vspace{0.35em}
+
+((* if cv.header.professional_links *))
+((( cv.header.professional_links[0] | latex )))
+((* endif *))
+}
+
+\sectiontitle{Skills}
+
+{\small
+Skills will go here.
+}
+
+\sectiontitle{Education}
+
+{\small
+Education will go here.
+}
+
+\sectiontitle{Languages}
+
+{\small
+Languages will go here.
+}
+
+\end{minipage}
+}
+
+\switchcolumn
+
+% ----------------------------
+% MAIN COLUMN
+% ----------------------------
+
+\sectiontitle{Profile}
+
+{\small
+((( cv.professional_summary.text | latex )))
+}
+
+\sectiontitle{Work Experience}
+
+{\small
+Experience will go here.
+}
+
+\end{paracol}
+
+\end{document}
