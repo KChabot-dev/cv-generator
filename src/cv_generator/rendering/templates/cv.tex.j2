@@ -1,10 +1,10 @@
 \documentclass[10pt,letterpaper]{article}
 
 \usepackage[
-    top=0.55in,
-    bottom=0.55in,
-    left=0.55in,
-    right=0.55in
+    top=0.32in,
+    bottom=0.50in,
+    left=0.50in,
+    right=0.50in
 ]{geometry}
 
 \usepackage{fontspec}
@@ -13,14 +13,32 @@
 \usepackage{enumitem}
 \usepackage{hyperref}
 \usepackage{ragged2e}
+\usepackage{graphicx}
+\usepackage{tabularx}
 
 \pagestyle{empty}
 
+% ============================================================
+% COLORS
+% ============================================================
+
 \definecolor{sidebargray}{HTML}{F1F1F1}
-\definecolor{textgray}{HTML}{333333}
-\definecolor{mutedgray}{HTML}{666666}
+\definecolor{textgray}{HTML}{565656}
+\definecolor{headinggray}{HTML}{4F4F4F}
+\definecolor{mutedgray}{HTML}{686868}
+\definecolor{rulegray}{HTML}{A6A6A6}
+
+% ============================================================
+% FONTS
+% ============================================================
 
 \setmainfont{Arial}
+
+\newfontfamily\headingfont[
+    Path=../../../src/cv_generator/rendering/assets/fonts/,
+    BoldFont=Raleway-Bold.ttf,
+    ItalicFont=Raleway-Italic.ttf
+]{Raleway-Regular.ttf}
 
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{0pt}
@@ -31,10 +49,79 @@
     linkcolor=textgray
 }
 
+% ============================================================
+% ASSETS
+% ============================================================
+
+\graphicspath{{../../../src/cv_generator/rendering/assets/icons/}}
+
+% ============================================================
+% SECTION FORMATTING
+% ============================================================
+
 \newcommand{\sectiontitle}[1]{%
-    \vspace{0.7em}%
-    {\large\bfseries\MakeUppercase{#1}}%
+    \vspace{0.55em}%
+    {\headingfont
+     \fontsize{10.5}{12.5}\selectfont
+     \bfseries
+     \addfontfeatures{LetterSpace=15}
+     \color{headinggray}
+     \MakeUppercase{#1}}%
+    \par
+    \vspace{0.70em}%
+}
+
+\newcommand{\sidebarsectiontitle}[1]{%
+    \vspace{0.22em}%
+    {\headingfont
+     \fontsize{10.5}{12.5}\selectfont
+     \bfseries
+     \addfontfeatures{LetterSpace=15}
+     \color{headinggray}
+     \MakeUppercase{#1}}%
+    \par
+    \vspace{0.58em}%
+}
+
+\newcommand{\solidseparator}{%
+    \vspace{0.80em}%
+    {\color{rulegray}\hrule height 0.45pt}%
+    \vspace{0.15em}%
+}
+
+\newcommand{\dottedseparator}{%
     \vspace{0.35em}%
+    {\color{rulegray}%
+    \noindent
+    \makebox[\linewidth]{\dotfill}}%
+    \par
+    \vspace{0.12em}%
+}
+
+% ============================================================
+% CONTACT ROW
+% ============================================================
+
+\newcommand{\contactrow}[2]{%
+    \begin{tabularx}{\linewidth}{
+        @{}
+        p{1.35em}
+        @{\hspace{0.70em}}
+        X
+        @{}
+    }
+        \raisebox{-0.12em}{
+            \includegraphics[
+                width=1.25em,
+                height=1.25em,
+                keepaspectratio
+            ]{#1}
+        }
+        &
+        #2
+        \\
+    \end{tabularx}
+    \vspace{0.08em}%
 }
 
 \begin{document}
@@ -45,24 +132,38 @@
 % HEADER
 % ============================================================
 
+\vspace*{0.10em}
+
 \begin{center}
 
-{\fontsize{23}{27}\selectfont
+{\headingfont
+\fontsize{27}{29}\selectfont
 \bfseries
+\addfontfeatures{LetterSpace=38}
 \MakeUppercase{
 ((( cv.header.full_name | latex )))
 }
 }
 
-\vspace{0.25em}
+\vspace{1.40em}
 
-{\large
+{\headingfont
+\fontsize{13}{14}\selectfont
+\bfseries
+\addfontfeatures{LetterSpace=15}
+\color{headinggray}
+\MakeUppercase{
 SCIENTIFIC SOFTWARE ENGINEER
 }
+}
 
-\vspace{0.25em}
+\vspace{0.36em}
 
-{\small\color{mutedgray}
+{\headingfont
+\fontsize{10}{12}\selectfont
+\itshape
+\addfontfeatures{LetterSpace=2.5}
+\color{mutedgray}
 Scientific computing
 \enspace$\bullet$\enspace
 Automation
@@ -74,77 +175,288 @@ R\&D
 
 \end{center}
 
-\vspace{0.6em}
+\vspace{0.60em}
+
+{\color{rulegray}\hrule height 0.50pt}
+
+\vspace{0.18em}
 
 % ============================================================
 % BODY
 % ============================================================
 
-\columnratio{0.29,0.71}
-\setlength{\columnsep}{1.2em}
+\columnratio{0.36,0.64}
+\setlength{\columnsep}{0.45em}
 
+\backgroundcolor{c[0]}{sidebargray}
 \begin{paracol}{2}
 
-% ----------------------------
+% ============================================================
 % LEFT SIDEBAR
+% ============================================================
+
+\vspace{0.30em}
+
+\hspace{0.30em}%
+\begin{minipage}{\dimexpr\linewidth-0.60em\relax}
+
+\RaggedRight
+
+% ----------------------------
+% CONTACT
 % ----------------------------
 
-\colorbox{sidebargray}{
-\begin{minipage}[t][0.72\textheight][t]{0.92\linewidth}
+\sidebarsectiontitle{Contact}
 
-\sectiontitle{Contact}
+{\fontsize{8.9}{10.8}\selectfont
 
-{\small
-((( cv.header.email | latex )))
+((* if cv.header.phone *))
+\contactrow{
+    phone.png
+}{
+    ((( cv.header.phone | latex )))
+}
+((* endif *))
 
-\vspace{0.35em}
-
-((( cv.header.location | latex )))
-
-\vspace{0.35em}
+((* if cv.header.email *))
+\contactrow{
+    email.png
+}{
+    ((( cv.header.email | latex )))
+}
+((* endif *))
 
 ((* if cv.header.professional_links *))
-((( cv.header.professional_links[0] | latex )))
+\contactrow{
+    linkedin.png
+}{
+    \href{
+        ((( cv.header.professional_links[0] )))
+    }{
+        linkedin.com/in/kevin-chabot
+    }
+}
 ((* endif *))
+
+((* if cv.header.location *))
+\contactrow{
+    location.png
+}{
+    ((( cv.header.location | latex )))
+}
+((* endif *))
+
 }
 
-\sectiontitle{Skills}
+\dottedseparator
 
-{\small
-Skills will go here.
+% ----------------------------
+% SKILLS
+% ----------------------------
+
+\sidebarsectiontitle{Skills}
+
+{\fontsize{8.4}{11.2}\selectfont
+
+((* for group in cv.skill_groups *))
+
+{\headingfont
+\bfseries
+\fontsize{8.2}{10.5}\selectfont
+((( group.label | latex )))
 }
 
-\sectiontitle{Education}
+\vspace{0.20em}
 
-{\small
-Education will go here.
+((( group.skills | join(" · ") | latex )))
+
+((* if not loop.last *))
+\vspace{0.70em}
+((* endif *))
+
+((* endfor *))
+
 }
 
-\sectiontitle{Languages}
+\dottedseparator
 
-{\small
-Languages will go here.
+% ----------------------------
+% EDUCATION
+% ----------------------------
+
+\sidebarsectiontitle{Education}
+
+{\fontsize{7.8}{9.8}\selectfont
+
+((* set degree_labels = {
+    "Ph.D.": "Ph.D.",
+    "Bachelor of Engineering": "B.Eng.",
+    "Bachelor of Science": "B.Sc."
+} *))
+
+((* for item in cv.education *))
+
+((* if loop.first or item.institution != loop.previtem.institution *))
+
+{\headingfont
+\bfseries
+\fontsize{8.3}{10.2}\selectfont
+((( item.institution | latex )))
+}
+
+\vspace{0.35em}
+
+((* endif *))
+
+\begin{tabularx}{\linewidth}{
+    @{}
+    X
+    r
+    @{}
+}
+
+{\headingfont
+\bfseries
+((( degree_labels.get(item.degree, item.degree) | latex )))
+}
+\enspace
+((( item.field | latex )))
+
+&
+
+{\color{mutedgray}
+\fontsize{7.1}{8.7}\selectfont
+((( item.date_text | education_date | latex )))
+}
+
+\end{tabularx}
+
+((* if not loop.last *))
+\vspace{0.22em}
+((* endif *))
+
+((* endfor *))
+
+}
+
+\dottedseparator
+
+% ----------------------------
+% LANGUAGES
+% ----------------------------
+
+\sidebarsectiontitle{Languages}
+
+{\fontsize{8.0}{10.0}\selectfont
+
+((* for item in cv.languages *))
+
+{\headingfont
+\bfseries
+((( item.language | latex )))
+}
+\hfill
+((( item.proficiency | humanize | latex )))
+
+((* if not loop.last *))
+\vspace{0.28em}
+((* endif *))
+
+((* endfor *))
+
 }
 
 \end{minipage}
-}
+
+% ============================================================
+% RIGHT COLUMN
+% ============================================================
 
 \switchcolumn
 
-% ----------------------------
-% MAIN COLUMN
-% ----------------------------
+\RaggedRight
 
 \sectiontitle{Profile}
 
-{\small
+{\fontsize{9.3}{12.2}\selectfont
 ((( cv.professional_summary.text | latex )))
 }
 
+\dottedseparator
+
 \sectiontitle{Work Experience}
 
-{\small
-Experience will go here.
+{\fontsize{9.3}{12.2}\selectfont
+
+((* for experience in cv.experiences *))
+
+\begin{tabularx}{\linewidth}{
+    @{}
+    X
+    r
+    @{}
+}
+
+{\headingfont
+\bfseries
+\fontsize{10}{12.5}\selectfont
+((( experience.role_title | latex )))
+}
+&
+{\fontsize{8.4}{10.5}\selectfont
+\color{mutedgray}
+((( experience.date_text | latex )))
+}
+
+\end{tabularx}
+
+\vspace{0.12em}
+
+{\headingfont
+\fontsize{8.8}{11}\selectfont
+\bfseries
+((( experience.organization | latex )))
+}
+
+((* if experience.location *))
+\enspace
+{\fontsize{8.2}{10.5}\selectfont
+\color{mutedgray}
+((( experience.location | latex )))
+}
+((* endif *))
+
+\vspace{0.30em}
+
+\begin{itemize}[
+    leftmargin=1.15em,
+    labelsep=0.45em,
+    itemsep=0.38em,
+    topsep=0.25em,
+    parsep=0pt,
+    partopsep=0pt
+]
+
+((* for bullet in experience.bullets *))
+
+\item ((( bullet.text | latex )))
+
+((* endfor *))
+
+\end{itemize}
+
+((* if not loop.last *))
+
+\vspace{0.55em}
+
+\dottedseparator
+
+\vspace{0.20em}
+
+((* endif *))
+
+((* endfor *))
+
 }
 
 \end{paracol}
