@@ -353,3 +353,41 @@ Potential follow-up work:
 - experimentation with additional LLM/provider integrations
 - packaging and distribution improvements
 - broader test coverage and integration tests
+
+### CV Rendering — V1 operational
+
+Status: Implemented and validated on the first real job application.
+
+The pipeline can now transform a validated `CVDraft` into a usable one-page
+PDF CV through a Jinja2 + LaTeX rendering layer.
+
+Implemented:
+
+- `LaTeXCVRenderer` converts `CVDraft` into a `.tex` document.
+- Jinja2 uses custom delimiters to avoid collisions with LaTeX syntax.
+- LuaLaTeX/latexmk is used for PDF compilation.
+- The template uses a professional two-column layout:
+  - left sidebar for contact, skills, education, and languages;
+  - main column for profile and work experience.
+- Contact information is populated from canonical `CandidateProfile` data.
+- Education dates are displayed compactly by year while retaining the more
+  precise canonical source values.
+- Structured language proficiency values are converted to human-readable
+  display labels.
+- The sidebar background is implemented using the `paracol` column
+  background rather than a fixed-height content box, keeping background
+  geometry independent from sidebar content height.
+- The first real Nord Quantique CV renders successfully as a one-page PDF.
+
+Current boundary:
+
+The basic V1 renderer/layout is considered operational. Further work should
+focus primarily on generated content quality rather than page geometry.
+
+Next:
+
+1. Refine Writer prompt rules for skill selection and phrasing.
+2. Improve experience-bullet prioritization and concision.
+3. Validate PDF text extraction / ATS readability.
+4. Automate the LaTeX compilation step if useful for the repeated-application
+   workflow.

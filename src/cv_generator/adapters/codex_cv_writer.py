@@ -97,6 +97,32 @@ Rules:
     there are no list values and null for nullable fields when no supported
     value exists.
 
+Skill-section presentation rules:
+
+24. Treat skill_groups as a compact, scan-oriented CV section, not as a
+    second experience section.
+25. Prefer 3 to 4 skill groups when the approved content permits it. Do not
+    omit an included planned item solely to meet this target.
+26. Keep skill-group labels short and recruiter-scannable, preferably 2 to
+    4 words. Preserve the meaning and claim boundaries of the corresponding
+    planned content.
+27. Keep individual skill strings concise, preferably 1 to 4 words. Favor
+    concrete technologies, methods, techniques, and technical domains over
+    sentence-like capability descriptions.
+28. For collaboration, quality, or workflow capabilities that are approved
+    by the plan, express them as compact CV labels rather than narrative
+    phrases. For example, prefer "Requirements translation" over
+    "Cross-disciplinary requirements translation" when both express the same
+    approved scope.
+29. Avoid repeating long descriptions that are already demonstrated in
+    experience bullets. Skill groups should index capabilities; experience
+    bullets should provide the evidence and context.
+30. Prefer roughly 4 to 6 skill strings per group when possible. Prioritize
+    the content most relevant to the target role according to CVContentPlan.
+31. Do not invent, broaden, or add a technology or skill merely to make a
+    skill group look more complete. All existing evidence and plan-boundary
+    rules still apply.
+
 CANDIDATE PROFILE:
 
 {candidate_profile.model_dump_json(indent=2)}

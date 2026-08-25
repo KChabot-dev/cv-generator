@@ -1615,3 +1615,69 @@
   -> usable for a real job application
 
 * Additional RAG sophistication, CI/GitHub, packaging, alternative providers, richer CLI workflows, and retrieval experiments remain useful learning opportunities after the first usable V1 is complete.
+
+## CV Rendering Lessons
+
+### Rendering is distinct from content generation
+
+`CVDraft` should describe CV content and provenance; the renderer should decide
+how that structured information is presented.
+
+This allowed presentation-specific transformations such as:
+
+- `January 2011–December 2014` → `2011–2014` for education display;
+- `native_or_bilingual` → `Native or bilingual`;
+- compact degree labels such as `B.Eng.` and `B.Sc.`.
+
+The canonical source data remains unchanged.
+
+### Jinja2 and LaTeX syntax conflict
+
+Default Jinja delimiters conflict with LaTeX syntax. The renderer therefore
+uses custom delimiters:
+
+- block: `((* ... *))`
+- variable: `((( ... )))`
+- comment: `((# ... #))`
+
+This keeps the LaTeX template readable without escaping normal LaTeX braces.
+
+### Provider output and presentation should remain separate
+
+The Writer can generate structured values and concise CV content, while the
+renderer handles purely visual/display transformations. Presentation fixes
+should not be pushed into canonical candidate data or evidence.
+
+### Avoid coupling background geometry to content geometry
+
+The first sidebar implementation used a `\colorbox` containing a fixed-height
+minipage. Because the box was unbreakable, adding content caused the entire
+sidebar to move to page 2.
+
+The better solution was to use `paracol`'s column background independently
+from the naturally sized sidebar content.
+
+General lesson:
+
+> Decorative page geometry should not determine the size or pagination
+> behavior of semantic content containers.
+
+### Real-data rendering exposes issues fake data does not
+
+The renderer looked correct with partial content, but the first complete real
+CV exposed:
+
+- excessive Education/Languages vertical usage;
+- raw enum-like language values;
+- canonical contact-data mistakes;
+- fixed-height sidebar pagination failure;
+- overly verbose skill wording.
+
+Rendering against a real application is therefore part of system validation,
+not merely visual polish.
+
+### V1 layout principle
+
+Once the renderer produces a stable, readable one-page CV, further gains
+should come from improving content selection and wording rather than repeated
+micro-adjustments to page geometry.
