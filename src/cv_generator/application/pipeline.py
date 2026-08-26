@@ -70,6 +70,7 @@ def run_pipeline(
 
     evidence_map, evidence_report = match_validate_and_store_evidence(
         run_id,
+        candidate_profile,
         job_spec,
         portfolio_context,
         matcher,

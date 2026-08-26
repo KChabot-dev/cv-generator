@@ -8,6 +8,7 @@ from cv_generator.validation.cross_model import (
     validate_content_plan_against_candidate_profile,
     validate_content_plan_claim_eligibility,
     validate_content_plan_evidence_alignment,
+    validate_content_plan_evidence_entity_alignment,
     validate_content_plan_references,
 )
 from cv_generator.validation.result import (
@@ -36,8 +37,8 @@ def plan_validate_and_store_content(
         validate_content_plan_against_candidate_profile(
             candidate_profile,
             content_plan,
+        )
     )
-)
 
     issues.extend(
         validate_content_plan_references(
@@ -49,6 +50,13 @@ def plan_validate_and_store_content(
 
     issues.extend(
         validate_content_plan_evidence_alignment(
+            evidence_map,
+            content_plan,
+        )
+    )
+
+    issues.extend(
+        validate_content_plan_evidence_entity_alignment(
             evidence_map,
             content_plan,
         )

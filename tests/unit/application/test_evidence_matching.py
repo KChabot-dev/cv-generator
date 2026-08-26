@@ -1,3 +1,4 @@
+import cv_generator.domain.candidate as candidate
 import cv_generator.domain.evidence as evidence
 import cv_generator.domain.job as job
 import cv_generator.domain.portfolio as portfolio
@@ -5,22 +6,34 @@ from cv_generator.application.evidence_matching import (
     match_validate_and_store_evidence,
 )
 from cv_generator.persistence.artifact_store import ArtifactStore
-from tests.factories import make_evidence_map, make_job_spec
+from tests.factories import (
+    make_candidate_profile,
+    make_evidence_map,
+    make_job_spec,
+)
 
 
 class FakeEvidenceMatcher:
     def __init__(self, result: evidence.EvidenceMap) -> None:
         self.result = result
+        self.received_candidate_profile: (
+            candidate.CandidateProfile | None
+        ) = None
         self.received_job_spec: job.JobSpec | None = None
-        self.received_portfolio_context: portfolio.PortfolioContext | None = None
+        self.received_portfolio_context: (
+            portfolio.PortfolioContext | None
+        ) = None
 
     def match(
         self,
+        candidate_profile: candidate.CandidateProfile,
         job_spec: job.JobSpec,
         portfolio_context: portfolio.PortfolioContext,
     ) -> evidence.EvidenceMap:
+        self.received_candidate_profile = candidate_profile
         self.received_job_spec = job_spec
         self.received_portfolio_context = portfolio_context
+
         return self.result
 
 
@@ -38,6 +51,7 @@ def make_portfolio_context() -> portfolio.PortfolioContext:
 def test_valid_evidence_is_matched_validated_and_persisted(
     artifact_store: ArtifactStore,
 ) -> None:
+    candidate_profile = make_candidate_profile()
     job_spec = make_job_spec()
     portfolio_context = make_portfolio_context()
     expected_evidence_map = make_evidence_map()
@@ -48,14 +62,20 @@ def test_valid_evidence_is_matched_validated_and_persisted(
 
     evidence_map, report = match_validate_and_store_evidence(
         "RUN-001",
+        candidate_profile,
         job_spec,
         portfolio_context,
         matcher,
         artifact_store,
     )
 
+    assert matcher.received_candidate_profile == candidate_profile
     assert matcher.received_job_spec == job_spec
-    assert matcher.received_portfolio_context == portfolio_context
+    assert (
+        matcher.received_portfolio_context
+        == portfolio_context
+    )
+
     assert report.is_valid
     assert evidence_map == expected_evidence_map
 
@@ -68,6 +88,7 @@ def test_valid_evidence_is_matched_validated_and_persisted(
 def test_invalid_evidence_is_not_persisted(
     artifact_store: ArtifactStore,
 ) -> None:
+    candidate_profile = make_candidate_profile()
     job_spec = make_job_spec()
     portfolio_context = make_portfolio_context()
 
@@ -89,6 +110,7 @@ def test_invalid_evidence_is_not_persisted(
 
     evidence_map, report = match_validate_and_store_evidence(
         "RUN-001",
+        candidate_profile,
         job_spec,
         portfolio_context,
         matcher,
@@ -107,9 +129,11 @@ def test_invalid_evidence_is_not_persisted(
         "RUN-001"
     ).exists()
 
+
 def test_evidence_with_unknown_portfolio_source_is_not_persisted(
     artifact_store: ArtifactStore,
 ) -> None:
+    candidate_profile = make_candidate_profile()
     job_spec = make_job_spec()
 
     portfolio_context = portfolio.PortfolioContext(
@@ -133,6 +157,7 @@ def test_evidence_with_unknown_portfolio_source_is_not_persisted(
 
     evidence_map, report = match_validate_and_store_evidence(
         "RUN-001",
+        candidate_profile,
         job_spec,
         portfolio_context,
         matcher,

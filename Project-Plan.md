@@ -1,24 +1,36 @@
 ## Current Phase
 
-Document Generation / V1 Completion
+V1 Validation / Real Application Testing
 
-The AI-independent architecture is now connected to the real Professional
-Portfolio and real Codex adapters.
+The complete CV-generation pipeline is now operational on the first real
+application case.
 
-The content-generation pipeline has been exercised on a real Nord Quantique
-job posting and successfully produced a validated, persisted `CVDraft`.
+The system has successfully transformed a real Nord Quantique job posting and
+the real Professional Portfolio into:
 
-Current objective:
+Job posting
 
-CVDraft
+→ validated `JobSpec`
+
+→ provenance-aware `EvidenceMap`
+
+→ validated `CVContentPlan`
+
+→ validated `CVDraft`
+
 → deterministic LaTeX rendering
-→ compiled PDF
-→ first usable tailored CV
-→ test V1 on additional real job postings
 
-The immediate priority remains completing a usable V1 for real job
-applications before adding nonessential infrastructure or more advanced RAG
-techniques.
+→ compiled one-page PDF CV
+
+The immediate objective is now to refine the first generated CV where useful
+and exercise the complete workflow on additional real job postings.
+
+Repeated applications will be used to identify which remaining limitations are
+systematic enough to justify additional automation, validation, repair logic,
+or retrieval complexity.
+
+The priority remains starting real job applications with a usable V1 rather
+than adding infrastructure before an observed need exists.
 
 
 ## Completed
@@ -69,6 +81,9 @@ techniques.
 
 - `EvidenceMap`
   - source provenance
+  - canonical candidate-entity provenance through `source_entity_refs`
+  - separation between portfolio-document provenance and candidate-entity
+    ownership
   - evidence scenarios
   - scenario-to-requirement matching
   - capability assessment
@@ -121,6 +136,10 @@ techniques.
 
 - `JobSpec` ↔ `EvidenceMap` requirement completeness and reference validation
 - `PortfolioContext` ↔ `EvidenceMap` source-provenance validation
+- `EvidenceMap` scenario-to-canonical-entity provenance validation during
+  planning
+- `EvidenceMap` ↔ `CVContentPlan` experience-ownership validation preventing
+  evidence from one candidate experience from being transferred to another
 - `EvidenceMap` ↔ `CVContentPlan` reference and evidence-alignment validation
 - Claim-eligibility enforcement
 - `CVContentPlan` ↔ `CVDraft` plan-reference and claim-boundary validation
@@ -130,6 +149,8 @@ techniques.
 - Pipeline-wide validation gates
 - Aggregate valid and invalid pipeline tests
 - Stop-on-validation-failure behavior verified on real AI output
+- Experience/evidence provenance mismatch detected deterministically before
+  CV writing
 
 
 ### Intermediate Artifact Persistence
@@ -159,9 +180,12 @@ Implemented:
 
 - Job analysis orchestration and persistence
 - Evidence matching, validation, and persistence
+- `CandidateProfile` supplied to `EvidenceMatcher` so generated evidence
+  scenarios can reference canonical candidate entity IDs
 - CV content planning, validation, and persistence
 - CV draft writing, validation, and persistence
 - CandidateProfile-to-CVContentPlan source-reference validation
+- EvidenceScenario-to-CVContentPlan entity-provenance validation
 - End-to-end pipeline orchestration
 - Pipeline stop-on-validation-failure behavior
 - End-to-end happy-path and failure-path tests
@@ -182,6 +206,10 @@ Implemented:
 - UTF-8 portfolio loading
 - Missing-root handling
 - Portfolio provenance supplied to `EvidenceMatcher`
+- Canonical `CandidateProfile` entity identifiers supplied alongside portfolio
+  evidence
+- Evidence scenarios can distinguish where evidence was documented from which
+  canonical candidate experience or education record it belongs to
 - Portfolio source-reference validation against generated `EvidenceMap`
 
 The current local Professional Portfolio contains 35 curated non-empty Markdown
@@ -227,49 +255,113 @@ Codex execution layer.
 Unit tests use mocked runner/subprocess boundaries so the normal pytest suite
 does not invoke real Codex calls.
 
+Prompt constraints were refined during the first real application to mirror
+important domain and cross-model contracts, including:
+
+- unsupported requirements cannot retain scenario matches;
+- requirement references on planned content must have explicitly approved
+  supporting evidence;
+- evidence from one canonical candidate experience must not be reassigned to
+  another experience;
+- quantitative and technical facts must retain their original meaning when
+  compressed for CV use.
+
+These prompt constraints improve generation reliability, while deterministic
+domain and cross-model validation remains responsible for enforcing critical
+invariants.
 
 ### Real-World Integration Validation
 
-The system has been tested using a real current job posting:
+The complete V1 workflow has been tested using a real current job posting:
 
 `Senior Software Developer (level 3) – Calibration & Device Intelligence`
+
 at Nord Quantique.
 
 Successful real stages:
 
 Job posting
+
 → `CodexJobAnalyzer`
+
 → validated `JobSpec`
 
-Real Professional Portfolio
+Real Professional Portfolio + canonical `CandidateProfile`
+
 → `CodexEvidenceMatcher`
-→ validated `EvidenceMap`
+
+→ validated provenance-aware `EvidenceMap`
 
 Validated `JobSpec` + `EvidenceMap` + `CandidateProfile`
+
 → `CodexCVPlanner`
+
 → validated `CVContentPlan`
 
 Validated plan + evidence + canonical profile
+
 → `CodexCVWriter`
+
 → validated `CVDraft`
 
-The first real pipeline run also demonstrated the value of the validation
-architecture:
+Validated `CVDraft`
 
-- the initial AI-generated content plan contained three evidence-alignment
-  violations;
-- the planning validation gate rejected the plan and prevented downstream CV
-  writing;
-- the planner instructions were tightened to mirror the deterministic
-  evidence-alignment contract;
-- the planner was rerun using the already-persisted `JobSpec` and
-  `EvidenceMap`;
-- the corrected plan passed with zero validation issues;
-- the resulting real `CVDraft` also passed all draft validation gates with
-  zero issues and was persisted.
+→ `LaTeXCVRenderer`
 
-This provides an empirical demonstration that structured AI output alone is
-not sufficient and that deterministic validation gates are necessary.
+→ LuaLaTeX/latexmk
+
+→ usable one-page PDF CV
+
+The real application run exposed several important failure modes and validated
+the layered safety architecture.
+
+First, an AI-generated content plan contained requirement/evidence-alignment
+violations. The planning validation gate rejected the plan and prevented
+invalid downstream writing.
+
+A later planning experiment exposed a more important provenance problem:
+undergraduate LabVIEW and instrumentation evidence could be considered highly
+relevant to the target job and incorrectly transferred by the planner into the
+graduate-research experience.
+
+The architecture was strengthened by:
+
+- adding `source_entity_refs` to `EvidenceScenario`;
+- supplying `CandidateProfile` to `EvidenceMatcher`;
+- distinguishing portfolio-document provenance from canonical candidate-entity
+  ownership;
+- adding deterministic planning validation that verifies an experience item
+  uses evidence attributable to that same candidate experience.
+
+The regenerated real `EvidenceMap` correctly attributed:
+
+- graduate Python, signal-processing, SPR-platform, biosensor, and
+  collaboration evidence to `EXP-001`;
+- undergraduate LabVIEW and scientific-instrument-control evidence to
+  `EXP-002`;
+- education evidence to the corresponding `EDU-*` records.
+
+A subsequent planner run initially produced two requirement/evidence-alignment
+violations. These were rejected by the existing deterministic validator.
+
+After tightening the planner instructions to treat approved
+requirement/scenario relationships as strict lookup constraints, the next plan
+passed with zero validation issues.
+
+The resulting `CVDraft` also passed all draft validation gates with zero
+issues.
+
+The final draft was rendered successfully as a professional one-page PDF.
+
+This real integration exercise demonstrated that:
+
+- schema-constrained AI output is useful but not sufficient;
+- prompt instructions improve generation reliability but do not guarantee
+  correctness;
+- critical provenance and cross-stage relationships should be enforced
+  deterministically;
+- persisted intermediate artifacts make it possible to rerun only the stage
+  that requires correction rather than restarting the entire pipeline.
 
 
 ### Current Pipeline
@@ -283,7 +375,7 @@ Job posting text
 → `MarkdownPortfolioLoader`
 
 → `PortfolioContext`
-
+`CandidateProfile` + `JobSpec` + `PortfolioContext`
 → `CodexEvidenceMatcher`
 
 → `EvidenceMap`
@@ -296,40 +388,66 @@ Job posting text
 
 → `CVDraft`
 
+→ `LaTeXCVRenderer`
+
+→ `.tex`
+
+→ LuaLaTeX/latexmk
+
+→ PDF CV
+
 Each structured stage is validated before downstream processing.
 
 Intermediate artifacts are persisted locally for inspection, debugging, and
 reuse when a downstream stage must be rerun.
 
 
-## Next Phase — Document Generation / V1 Completion
+## Next Phase — V1 Validation on Additional Applications
 
 Goal:
 
-Convert a validated `CVDraft` into a professional, usable PDF CV and complete
-the first working V1.
+Use the complete V1 workflow for real job applications and determine which
+remaining limitations are systematic enough to justify additional engineering.
 
 Immediate tasks:
 
-1. Verify the available local LaTeX compiler/toolchain.
-2. Define one deterministic V1 CV layout/template.
-3. Implement a LaTeX renderer for `CVDraft`.
-4. Generate a `.tex` document from the real Nord Quantique draft.
-5. Compile the document to PDF.
-6. Review content density, page length, readability, and visual hierarchy.
-7. Make only the rendering/content adjustments required for a usable V1.
-8. Run the complete workflow on several additional real job postings.
-9. Confirm that the generated CVs remain grounded, relevant, and practical
-   for real applications.
+1. Refine the first Nord Quantique CV where useful for content density,
+   software-engineering positioning, and readability.
+
+2. Test PDF text extraction and ATS readability.
+
+3. Run the complete workflow on additional real job postings.
+
+4. Compare generated evidence selection, planning, wording, and document
+   structure across different target roles.
+
+5. Observe how often AI stages fail deterministic validation during repeated
+   use.
+
+6. Add bounded automated repair/retry behavior only if repeated applications
+   show that manual reruns are a meaningful workflow limitation.
+
+7. Improve the repeated-application interface, run naming, or LaTeX compilation
+   workflow where this provides clear practical value.
+
+8. Begin using generated CVs for real applications while continuing to improve
+   the system incrementally.
 
 V1 success criterion:
 
 Real job posting
+
 → trustworthy portfolio evidence
+
 → tailored and validated CV content
+
 → rendered usable PDF
+
 → fast enough to repeat for actual job applications
 
+This criterion has now been demonstrated once on the Nord Quantique
+application. The next objective is to demonstrate repeatability across
+additional real postings.
 
 ## After V1 / Continued Upskilling
 
@@ -353,6 +471,9 @@ Potential follow-up work:
 - experimentation with additional LLM/provider integrations
 - packaging and distribution improvements
 - broader test coverage and integration tests
+
+- validator-guided AI repair/retry if repeated real applications demonstrate a
+  practical need
 
 ### CV Rendering — V1 operational
 
@@ -386,8 +507,14 @@ focus primarily on generated content quality rather than page geometry.
 
 Next:
 
-1. Refine Writer prompt rules for skill selection and phrasing.
-2. Improve experience-bullet prioritization and concision.
+1. Refine generated content where useful for concision and target-role
+   positioning.
+
+2. Reduce undesirable automatic word hyphenation in the rendered CV.
+
 3. Validate PDF text extraction / ATS readability.
-4. Automate the LaTeX compilation step if useful for the repeated-application
+
+4. Exercise the renderer on additional real application drafts.
+
+5. Automate the LaTeX compilation step if useful for the repeated-application
    workflow.

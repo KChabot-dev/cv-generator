@@ -187,6 +187,64 @@ def validate_content_plan_evidence_alignment(
 
     return issues
 
+def validate_content_plan_evidence_entity_alignment(
+    evidence_map: EvidenceMap,
+    content_plan: CVContentPlan,
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+
+    scenarios_by_id = {
+        scenario.id: scenario
+        for scenario in evidence_map.scenarios
+    }
+
+    for item in content_plan.planned_items:
+        if item.content_type not in {
+            ContentType.EXPERIENCE_ENTRY,
+            ContentType.EXPERIENCE_BULLET,
+        }:
+            continue
+
+        if item.source_entity_ref is None:
+            # Missing experience provenance is already handled by
+            # validate_content_plan_against_candidate_profile().
+            continue
+
+        for evidence_ref in item.evidence_refs:
+            scenario = scenarios_by_id.get(evidence_ref)
+
+            if scenario is None:
+                # Unknown evidence references are already handled by
+                # validate_content_plan_references().
+                continue
+
+            if not scenario.source_entity_refs:
+                # We cannot validate entity attribution when an older
+                # EvidenceMap does not yet contain structured provenance.
+                # A later evidence-stage validator will make this required.
+                continue
+
+            if item.source_entity_ref not in scenario.source_entity_refs:
+                issues.append(
+                    ValidationIssue(
+                        code="planning.evidence_entity_mismatch",
+                        message=(
+                            f"{item.id} assigns evidence scenario "
+                            f"{evidence_ref} to {item.source_entity_ref}, "
+                            "but the scenario is attributed to "
+                            f"{', '.join(scenario.source_entity_refs)}"
+                        ),
+                        stage=ValidationStage.PLANNING,
+                        references=[
+                            item.id,
+                            item.source_entity_ref,
+                            evidence_ref,
+                        ],
+                    )
+                )
+
+    return issues
+
 def validate_content_plan_claim_eligibility(
     evidence_map: EvidenceMap,
     content_plan: CVContentPlan,

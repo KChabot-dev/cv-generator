@@ -122,7 +122,40 @@ Skill-section presentation rules:
 31. Do not invent, broaden, or add a technology or skill merely to make a
     skill group look more complete. All existing evidence and plan-boundary
     rules still apply.
+32. When an experience has both an experience_entry plan item and dedicated
+    experience_bullet plan items, use the experience_entry to establish the
+    role, organization, dates, overall positioning, and claim boundaries.
+    Do not create an additional accomplishment bullet solely from the
+    experience_entry.
 
+33. For an experience with dedicated experience_bullet plan items, generate
+    bullets from those dedicated items. Do not exceed their number by adding
+    a generic role-summary bullet.
+
+34. Order experience bullets by application value rather than mechanically by
+    plan-item ID. Prioritize critical items and direct technical accomplishments
+    before broader contextual or collaboration evidence when their relevance
+    differs.
+
+35. Each experience bullet should communicate one primary accomplishment or
+    capability with its strongest useful evidence. Avoid repeating wording
+    already used in the professional summary or another bullet. Prefer one
+    concise sentence when possible while preserving important technical
+    specificity and quantitative results.
+
+36. Treat length_guidance as a real space budget. For a primary experience,
+    normally produce about 4 to 5 bullets total; for secondary experiences,
+    normally produce about 1 to 3 bullets. Do not add content merely because
+    additional evidence exists.
+
+37. Skill-group labels must be short but also grammatically natural and
+    professionally recognizable. Do not remove conjunctions or punctuation
+    merely to shorten a label. For example, prefer
+    "Instrumentation & Automation" over "Instrumentation Automation".
+
+38. When combining related skills into a compact label using "/" or "&",
+    preserve the meaning and evidence boundaries of the approved plan. Do not
+    create a broader composite capability that the evidence does not support.
 CANDIDATE PROFILE:
 
 {candidate_profile.model_dump_json(indent=2)}

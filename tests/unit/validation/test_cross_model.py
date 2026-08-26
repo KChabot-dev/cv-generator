@@ -9,6 +9,7 @@ from cv_generator.validation.cross_model import (
     validate_content_plan_against_candidate_profile,
     validate_content_plan_claim_eligibility,
     validate_content_plan_evidence_alignment,
+    validate_content_plan_evidence_entity_alignment,
     validate_content_plan_references,
     validate_draft_against_candidate_profile,
     validate_draft_plan_alignment,
@@ -670,4 +671,62 @@ def test_content_plan_rejects_unknown_candidate_experience() -> None:
     assert issues[0].references == [
         "PLAN-001",
         "EXP-999",
+    ]
+
+def test_content_plan_rejects_evidence_from_different_experience() -> None:
+    source = evidence.SourceItem(
+        source_document="02-experiences/undergraduate.md",
+        supporting_text=(
+            "Developed LabVIEW applications for scientific instrumentation."
+        ),
+        source_type=evidence.SourceType.EXPERIENCE,
+    )
+
+    evidence_map = evidence.EvidenceMap(
+        scenarios=[
+            evidence.EvidenceScenario(
+                id="SCN-002",
+                summary="Undergraduate instrumentation software",
+                source_items=[source],
+                source_entity_refs=["EXP-002"],
+            )
+        ]
+    )
+
+    content_plan = planning.CVContentPlan(
+        application_target=planning.ApplicationTarget(
+            job_title="Scientific Software Engineer",
+            company="Example Company",
+            job_spec_reference="JOB-001",
+        ),
+        document_strategy=planning.DocumentStrategy(
+            primary_positioning="Scientific software engineer",
+        ),
+        planned_items=[
+            planning.PlannedContentItem(
+                id="PLAN-007",
+                target_section=planning.CVSection.EXPERIENCE,
+                content_type=planning.ContentType.EXPERIENCE_BULLET,
+                source_entity_ref="EXP-001",
+                evidence_refs=["SCN-002"],
+                purpose="Demonstrate instrumentation software.",
+                priority=planning.PlanningPriority.HIGH,
+                inclusion_status=planning.InclusionStatus.INCLUDE,
+            )
+        ],
+    )
+
+    issues = validate_content_plan_evidence_entity_alignment(
+        evidence_map,
+        content_plan,
+    )
+
+    assert [issue.code for issue in issues] == [
+        "planning.evidence_entity_mismatch"
+    ]
+
+    assert issues[0].references == [
+        "PLAN-007",
+        "EXP-001",
+        "SCN-002",
     ]

@@ -12,13 +12,16 @@ class JobAnalyzer(Protocol):
     def analyze(self, job_text: str) -> JobSpec:
         ...
 
+
 class EvidenceMatcher(Protocol):
     def match(
         self,
+        candidate_profile: CandidateProfile,
         job_spec: JobSpec,
         portfolio_context: PortfolioContext,
     ) -> EvidenceMap:
         ...
+
 
 class CVPlanner(Protocol):
     def plan(
@@ -28,6 +31,7 @@ class CVPlanner(Protocol):
         evidence_map: EvidenceMap,
     ) -> CVContentPlan:
         ...
+
 
 class CVWriter(Protocol):
     def write(

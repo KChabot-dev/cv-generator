@@ -37,6 +37,7 @@ class EvidenceScenario(DomainModel):
     id: str
     summary: str
     source_items: list[SourceItem] = Field(min_length=1)
+    source_entity_refs: list[str] = Field(default_factory=list)
     technical_details: list[str] = Field(default_factory=list)
     context: str | None = None
     autonomy_level: AutonomyLevel | None = None

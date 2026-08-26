@@ -1681,3 +1681,335 @@ not merely visual polish.
 Once the renderer produces a stable, readable one-page CV, further gains
 should come from improving content selection and wording rather than repeated
 micro-adjustments to page geometry.
+
+## Canonical Evidence Provenance and Deterministic Validation
+
+### Portfolio provenance and entity provenance are different
+
+Evidence now carries two distinct forms of provenance.
+
+`SourceItem.source_document` answers:
+
+> Where in the Professional Portfolio was this evidence documented?
+
+`EvidenceScenario.source_entity_refs` answers:
+
+> Which canonical candidate experience, education record, or other entity does
+> this evidence actually belong to?
+
+These are different questions and should not be represented by the same field.
+
+For example, a LabVIEW instrumentation scenario may be documented across:
+
+- a project file;
+- a code-audit file;
+- a skills file.
+
+Those documents establish where the evidence was found.
+
+The scenario may nevertheless belong canonically to one specific candidate
+experience such as:
+
+`EXP-002`
+
+This distinction became important when the Planner attempted to reuse highly
+relevant undergraduate LabVIEW evidence under the graduate research
+experience.
+
+The evidence itself was real, but the experience attribution was wrong.
+
+---
+
+### CandidateProfile is now part of Evidence Matching
+
+`CodexEvidenceMatcher` originally received:
+
+- `JobSpec`
+- `PortfolioContext`
+
+This was sufficient to determine whether portfolio evidence supported job
+requirements, but it was not sufficient to reliably associate evidence with
+canonical candidate entities.
+
+The Evidence Matcher now receives:
+
+- `CandidateProfile`
+- `JobSpec`
+- `PortfolioContext`
+
+This allows it to populate `EvidenceScenario.source_entity_refs` using exact
+canonical IDs such as:
+
+- `EXP-001`
+- `EXP-002`
+- `EDU-001`
+
+The Professional Portfolio remains the source of evidence about what the
+candidate actually did.
+
+`CandidateProfile` supplies the stable entity identifiers used to establish
+ownership of that evidence.
+
+---
+
+### Relevance does not imply ownership
+
+A piece of evidence can be highly relevant to a job without belonging to the
+experience where the Planner would most like to use it.
+
+The first real Nord Quantique planning experiments exposed this distinction.
+
+A scientific-instrumentation scenario containing:
+
+- LabVIEW development;
+- camera control;
+- motors;
+- positioning;
+- RS-232 communication;
+- acquisition orchestration;
+
+was highly relevant to the target Senior Software Developer role.
+
+However, that work belonged to the undergraduate research experience
+`EXP-002`.
+
+The Planner initially attempted to use the same evidence under graduate
+experience `EXP-001`.
+
+This produced a factually misleading CV structure even though the underlying
+technical claims were individually supported.
+
+General lesson:
+
+> Evidence relevance and evidence ownership are independent constraints.
+
+A Planner must satisfy both.
+
+---
+
+### Important invariants should not depend only on prompts
+
+The Planner prompt explicitly instructed the AI not to transfer evidence from
+one candidate experience to another.
+
+The model still violated that instruction during a real run.
+
+This demonstrated that prompt instructions are probabilistic behavior
+guidance, not deterministic guarantees.
+
+The architecture was therefore extended with a cross-model validator that
+checks:
+
+`PlannedContentItem.source_entity_ref`
+
+against:
+
+`EvidenceScenario.source_entity_refs`
+
+for the evidence scenarios used by experience items.
+
+If a planned item assigns evidence belonging to `EXP-002` to `EXP-001`, the
+plan is rejected with a structured validation issue rather than being allowed
+to reach the Writer.
+
+This reinforces a broader engineering principle:
+
+> Prompts improve the probability of correct AI behavior. Software contracts
+> enforce critical invariants.
+
+---
+
+### Validation layers protect different failure classes
+
+The first real application exposed failures at several different levels.
+
+Pydantic/domain validation caught an internally inconsistent Evidence
+Assessment where a requirement was marked unsupported while still referencing
+evidence scenarios.
+
+Cross-model planning validation caught requirements attached to evidence
+scenarios that were not explicitly approved for those requirements.
+
+Canonical-entity provenance validation caught the possibility of transferring
+evidence between candidate experiences.
+
+These validation layers answer different questions:
+
+- schema/domain validation:
+  - Is this artifact internally valid?
+
+- requirement/evidence validation:
+  - Is this scenario actually approved for the requirement being targeted?
+
+- entity-provenance validation:
+  - Does this evidence belong to the candidate experience where it is being
+    presented?
+
+- draft validation:
+  - Did the Writer remain inside the boundaries approved by the content plan?
+
+No single validation mechanism is sufficient for all of these relationships.
+
+---
+
+### AI output should be treated as untrusted structured input
+
+Schema-constrained generation is valuable because it produces predictable
+typed artifacts.
+
+However, schema-valid output can still violate application-level meaning.
+
+The correct workflow is therefore:
+
+AI generation
+
+-> Pydantic reconstruction
+
+-> deterministic domain validation
+
+-> deterministic cross-model validation
+
+-> persistence only when valid
+
+-> downstream processing
+
+This is similar to accepting structured input from any external system:
+correct syntax does not imply correct business semantics.
+
+---
+
+### Real validation failures are useful architecture tests
+
+The invalid Nord Quantique generations were not simply wasted AI runs.
+
+They exposed missing assumptions in the software.
+
+One failure revealed that the architecture knew where evidence came from but
+did not yet know which candidate experience owned it.
+
+That led to:
+
+- `EvidenceScenario.source_entity_refs`;
+- `CandidateProfile` being supplied to `EvidenceMatcher`;
+- a deterministic experience/evidence provenance validator;
+- corresponding regression tests.
+
+The regenerated Evidence Map then correctly attributed:
+
+- graduate Python and scientific-analysis work to `EXP-001`;
+- graduate SPR-platform and biosensor work to `EXP-001`;
+- undergraduate LabVIEW and instrument-control work to `EXP-002`;
+- education scenarios to the corresponding `EDU-*` records.
+
+A subsequent valid Planner run kept the LabVIEW evidence under the
+undergraduate experience.
+
+The Writer then produced a valid draft with the same provenance boundaries.
+
+This is an example of using a real integration failure to discover and encode
+a previously implicit system invariant.
+
+---
+
+### Fail-fast behavior improves safety but not generation reliability
+
+A validation gate guarantees that known invalid states do not progress
+downstream.
+
+It does not guarantee that an AI stage will produce valid output on its first
+attempt.
+
+The current behavior is therefore:
+
+generate
+
+-> validate
+
+-> continue if valid
+
+-> stop if invalid
+
+Future repeated application testing may show that automatic repair or bounded
+retry logic would improve usability.
+
+A possible future pattern is:
+
+generate
+
+-> validate
+
+-> provide structured validation errors back to the responsible AI stage
+
+-> regenerate or repair once
+
+-> revalidate
+
+This should be added only if repeated real applications demonstrate that
+manual reruns are a meaningful workflow limitation.
+
+The current V1 keeps the simpler fail-fast architecture while collecting real
+evidence about where additional automation is worthwhile.
+
+---
+
+## First Complete Real CV Milestone
+
+The Nord Quantique application has now exercised the complete V1 workflow:
+
+Real job posting
+
+-> `CodexJobAnalyzer`
+
+-> validated `JobSpec`
+
+-> real Professional Portfolio
+
+-> `CodexEvidenceMatcher`
+
+-> provenance-aware validated `EvidenceMap`
+
+-> `CodexCVPlanner`
+
+-> validated `CVContentPlan`
+
+-> `CodexCVWriter`
+
+-> validated `CVDraft`
+
+-> `LaTeXCVRenderer`
+
+-> LaTeX source
+
+-> LuaLaTeX / latexmk
+
+-> one-page PDF CV
+
+The generated draft passed the deterministic draft-validation gates with zero
+issues.
+
+The rendered CV also demonstrated that the provenance correction propagated
+through the complete system:
+
+- graduate scientific-software work remained under the graduate experience;
+- undergraduate LabVIEW and scientific-instrumentation work remained under
+  the undergraduate experience;
+- canonical education and contact information remained separate from
+  evidence-derived claims.
+
+The first complete real CV is usable as a V1 output, although normal
+application-specific content refinement remains appropriate.
+
+The project has therefore moved from:
+
+> Can the architecture generate a real CV?
+
+to:
+
+> How reliably and efficiently does the workflow perform across multiple real
+> job applications?
+
+The next applications should be treated as real-world regression and
+repeatability tests.
+
+Observed recurring problems should drive the next engineering investments
+rather than adding complexity in advance.

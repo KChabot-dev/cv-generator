@@ -1,4 +1,5 @@
 from cv_generator.application.ports import EvidenceMatcher
+from cv_generator.domain.candidate import CandidateProfile
 from cv_generator.domain.evidence import EvidenceMap
 from cv_generator.domain.job import JobSpec
 from cv_generator.domain.portfolio import PortfolioContext
@@ -12,12 +13,14 @@ from cv_generator.validation.result import ValidationIssue, ValidationReport
 
 def match_validate_and_store_evidence(
     run_id: str,
+    candidate_profile: CandidateProfile,
     job_spec: JobSpec,
     portfolio_context: PortfolioContext,
     matcher: EvidenceMatcher,
     store: ArtifactStore,
 ) -> tuple[EvidenceMap, ValidationReport]:
     evidence_map = matcher.match(
+        candidate_profile,
         job_spec,
         portfolio_context,
     )
@@ -30,6 +33,7 @@ def match_validate_and_store_evidence(
             evidence_map,
         )
     )
+
     issues.extend(
         validate_evidence_sources_against_portfolio(
             portfolio_context,

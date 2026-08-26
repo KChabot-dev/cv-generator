@@ -1,8 +1,8 @@
 import pytest
 
+import cv_generator.domain.candidate as candidate
 from cv_generator.application.pipeline import run_pipeline, validate_and_store_draft
 from cv_generator.domain import (
-    candidate,
     draft,
     evidence,
     job,
@@ -71,6 +71,7 @@ class FakeEvidenceMatcher:
 
     def match(
         self,
+        candidate_profile: candidate.CandidateProfile,
         job_spec: job.JobSpec,
         portfolio_context: portfolio.PortfolioContext,
     ) -> evidence.EvidenceMap:

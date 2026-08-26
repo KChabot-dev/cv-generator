@@ -1344,3 +1344,23 @@ profile, approved evidence, and approved content plan.
 
 This limits the writer's ability to independently reinterpret the job
 posting or introduce unsupported claims.
+
+## V1 Implementation Refinements
+
+The first real end-to-end application exposed two refinements to the original
+architecture without changing its overall stage structure.
+
+### Canonical Entity Provenance in Evidence Matching
+
+Evidence Matching now receives three structured inputs:
+
+```text
+CandidateProfile
+      +
+Validated JobSpec
+      +
+PortfolioContext
+      ↓
+EvidenceMatcher
+      ↓
+EvidenceMap

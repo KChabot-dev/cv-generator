@@ -3,7 +3,11 @@ import pytest
 import cv_generator.domain.evidence as evidence
 import cv_generator.domain.portfolio as portfolio
 from cv_generator.adapters.codex_evidence_matcher import CodexEvidenceMatcher
-from tests.factories import make_evidence_map, make_job_spec
+from tests.factories import (
+    make_candidate_profile,
+    make_evidence_map,
+    make_job_spec,
+)
 
 
 def make_portfolio_context() -> portfolio.PortfolioContext:
@@ -20,6 +24,7 @@ def make_portfolio_context() -> portfolio.PortfolioContext:
 def test_codex_evidence_matcher_builds_prompt_and_requests_evidence_map(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    candidate_profile = make_candidate_profile()
     job_spec = make_job_spec()
     portfolio_context = make_portfolio_context()
     expected_evidence_map = make_evidence_map()
@@ -49,6 +54,7 @@ def test_codex_evidence_matcher_builds_prompt_and_requests_evidence_map(
     )
 
     evidence_map = matcher.match(
+        candidate_profile,
         job_spec,
         portfolio_context,
     )
@@ -56,6 +62,7 @@ def test_codex_evidence_matcher_builds_prompt_and_requests_evidence_map(
     assert evidence_map == expected_evidence_map
     assert received_model_type is evidence.EvidenceMap
 
+    assert candidate_profile.identity.full_name in received_prompt
     assert job_spec.requirements[0].id in received_prompt
     assert "skills.md" in received_prompt
     assert "# Scientific software development" in received_prompt
