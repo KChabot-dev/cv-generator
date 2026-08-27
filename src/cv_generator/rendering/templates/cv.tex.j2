@@ -233,7 +233,7 @@ R\&D
     \href{
         ((( cv.header.professional_links[0] )))
     }{
-        linkedin.com/in/kevin-chabot
+        LinkedIn profile
     }
 }
 ((* endif *))
@@ -355,8 +355,11 @@ R\&D
 \bfseries
 ((( item.language | latex )))
 }
-\hfill
+\hspace{1.0em}
+{\color{mutedgray}
 ((( item.proficiency | humanize | latex )))
+}
+\par
 
 ((* if not loop.last *))
 \vspace{0.28em}
