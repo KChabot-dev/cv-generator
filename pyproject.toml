@@ -1,7 +1,7 @@
 [project]
 name = "cv-generator"
 version = "0.1.0"
-description = "Add your description here"
+description = "Evidence-grounded Python application for generating job-specific CVs from a structured professional portfolio."
 readme = "README.md"
 authors = [
     { name = "Kevin Chabot"}
