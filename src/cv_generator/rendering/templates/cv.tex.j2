@@ -459,6 +459,89 @@ R\&D
 
 }
 
+((* if cv.projects *))
+
+\dottedseparator
+
+\sectiontitle{
+((* if cv.projects | length == 1 *))
+Selected Project
+((* else *))
+Selected Projects
+((* endif *))
+}
+
+{\fontsize{9.3}{12.2}\selectfont
+
+((* for project in cv.projects *))
+
+((* if project.date_text *))
+
+\begin{tabularx}{\linewidth}{
+    @{}
+    X
+    r
+    @{}
+}
+
+{\headingfont
+\bfseries
+\fontsize{10}{12.5}\selectfont
+((( project.title | latex )))
+}
+&
+{\fontsize{8.4}{10.5}\selectfont
+\color{mutedgray}
+((( project.date_text | latex )))
+}
+
+\end{tabularx}
+
+((* else *))
+
+{\headingfont
+\bfseries
+\fontsize{10}{12.5}\selectfont
+((( project.title | latex )))
+}
+
+((* endif *))
+
+\vspace{0.30em}
+
+\begin{itemize}[
+    leftmargin=1.15em,
+    labelsep=0.45em,
+    itemsep=0.38em,
+    topsep=0.25em,
+    parsep=0pt,
+    partopsep=0pt
+]
+
+((* for bullet in project.bullets *))
+
+\item ((( bullet.text | latex )))
+
+((* endfor *))
+
+\end{itemize}
+
+((* if not loop.last *))
+
+\vspace{0.55em}
+
+\dottedseparator
+
+\vspace{0.20em}
+
+((* endif *))
+
+((* endfor *))
+
+}
+
+((* endif *))
+
 \end{paracol}
 
 \end{document}

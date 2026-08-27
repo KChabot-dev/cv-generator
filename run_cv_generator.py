@@ -51,9 +51,10 @@ def main() -> None:
 
     print(f"Run: {run_id}")
     print(
-        f"Portfolio documents loaded: "
+        "Portfolio documents loaded: "
         f"{len(portfolio_context.documents)}"
     )
+
     print()
     print("Running CV pipeline...")
     print()
@@ -72,7 +73,7 @@ def main() -> None:
 
     print()
     print(
-        f"Validation issues: "
+        "Validation issues: "
         f"{len(report.issues)}"
     )
 
@@ -85,21 +86,30 @@ def main() -> None:
 
     if cv_draft is None:
         print()
-        print("Pipeline stopped before producing a valid CV draft.")
         print(
-            f"Artifacts saved to: "
+            "Pipeline stopped before producing "
+            "a valid CV draft."
+        )
+        print(
+            "Artifacts saved to: "
             f"{run_directory}"
         )
         return
 
+    draft_path = store.paths.cv_draft(run_id)
+
     print()
-    print("CV draft generated successfully.")
+    print("CV draft generated and validated successfully.")
+    print()
     print(
-        f"Artifacts saved to: "
-        f"{run_directory}"
+        "Review this file before rendering:"
     )
+    print(
+        draft_path.resolve()
+    )
+
     print()
-    print(cv_draft.model_dump_json(indent=2))
+    print("Rendering has NOT been performed.")
 
 
 if __name__ == "__main__":

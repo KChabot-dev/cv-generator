@@ -170,3 +170,29 @@ def test_cv_draft_rejects_duplicate_claim_ids() -> None:
             ),
             claims=[claim, claim],
         )
+
+def test_cv_draft_rejects_unreferenced_claim() -> None:
+    claim = draft.DraftClaim(
+        id="CLAIM-001",
+        text="Developed scientific Python workflows.",
+        plan_item_ref="PLAN-001",
+        basis=draft.ClaimBasis.EVIDENCE,
+        evidence_refs=["SCEN-001"],
+    )
+
+    with pytest.raises(
+        ValidationError,
+        match="unreferenced draft claim",
+    ):
+        draft.CVDraft(
+            application_reference=draft.ApplicationReference(
+                company="Example Company",
+                job_title="Scientific Software Engineer",
+                job_spec_ref="JOB-001",
+                content_plan_ref="PLAN-DOC-001",
+            ),
+            header=draft.CandidateHeader(
+                full_name="Kevin Chabot",
+            ),
+            claims=[claim],
+        )

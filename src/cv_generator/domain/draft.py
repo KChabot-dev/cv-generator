@@ -11,6 +11,7 @@ class ClaimBasis(StrEnum):
     EVIDENCE = "evidence"
     MIXED = "mixed"
 
+
 class DraftClaim(DomainModel):
     id: str
     text: str
@@ -41,6 +42,7 @@ class DraftClaim(DomainModel):
 
         return self
 
+
 class ApplicationReference(DomainModel):
     company: str
     job_title: str
@@ -55,15 +57,18 @@ class CandidateHeader(DomainModel):
     phone: str | None = None
     professional_links: list[str] = Field(default_factory=list)
 
+
 class ProfessionalSummary(DomainModel):
     text: str
     claim_refs: list[str] = Field(default_factory=list)
+
 
 class DraftSection(DomainModel):
     section: str
     title: str
     order: int = Field(ge=1)
     entries: list[str] = Field(default_factory=list)
+
 
 class ExperienceBullet(DomainModel):
     text: str
@@ -77,6 +82,13 @@ class DraftExperience(DomainModel):
     location: str | None = None
     date_text: str
     bullets: list[ExperienceBullet] = Field(default_factory=list)
+
+
+class DraftProject(DomainModel):
+    title: str
+    date_text: str | None = None
+    bullets: list[ExperienceBullet] = Field(default_factory=list)
+
 
 class DraftSkillGroup(DomainModel):
     label: str
@@ -94,6 +106,7 @@ class DraftEducation(DomainModel):
     details: list[str] = Field(default_factory=list)
     claim_refs: list[str] = Field(default_factory=list)
 
+
 class DraftPublication(DomainModel):
     citation_text: str
     claim_refs: list[str] = Field(default_factory=list)
@@ -107,6 +120,8 @@ class DraftPresentation(DomainModel):
 class DraftLanguage(DomainModel):
     language: str
     proficiency: str | None = None
+    claim_refs: list[str] = Field(default_factory=list)
+
 
 class CVDraft(DomainModel):
     application_reference: ApplicationReference
@@ -115,6 +130,7 @@ class CVDraft(DomainModel):
 
     skill_groups: list[DraftSkillGroup] = Field(default_factory=list)
     experiences: list[DraftExperience] = Field(default_factory=list)
+    projects: list[DraftProject] = Field(default_factory=list)
     education: list[DraftEducation] = Field(default_factory=list)
     publications: list[DraftPublication] = Field(default_factory=list)
     presentations: list[DraftPresentation] = Field(default_factory=list)
@@ -134,26 +150,62 @@ class CVDraft(DomainModel):
         referenced_claim_ids: list[str] = []
 
         if self.professional_summary is not None:
-            referenced_claim_ids.extend(self.professional_summary.claim_refs)
+            referenced_claim_ids.extend(
+                self.professional_summary.claim_refs
+            )
 
         for skill_group in self.skill_groups:
-            referenced_claim_ids.extend(skill_group.claim_refs)
+            referenced_claim_ids.extend(
+                skill_group.claim_refs
+            )
 
         for experience in self.experiences:
             for bullet in experience.bullets:
-                referenced_claim_ids.extend(bullet.claim_refs)
+                referenced_claim_ids.extend(
+                    bullet.claim_refs
+                )
+
+        for project in self.projects:
+            for bullet in project.bullets:
+                referenced_claim_ids.extend(
+                    bullet.claim_refs
+                )
 
         for education in self.education:
-            referenced_claim_ids.extend(education.claim_refs)
+            referenced_claim_ids.extend(
+                education.claim_refs
+            )
 
         for publication in self.publications:
-            referenced_claim_ids.extend(publication.claim_refs)
+            referenced_claim_ids.extend(
+                publication.claim_refs
+            )
 
         for presentation in self.presentations:
-            referenced_claim_ids.extend(presentation.claim_refs)
+            referenced_claim_ids.extend(
+                presentation.claim_refs
+            )
+
+        for language in self.languages:
+            referenced_claim_ids.extend(
+                language.claim_refs
+            )
 
         for claim_ref in referenced_claim_ids:
             if claim_ref not in known_claim_ids:
-                raise ValueError(f"unknown claim reference: {claim_ref}")
+                raise ValueError(
+                    f"unknown claim reference: {claim_ref}"
+                )
 
+        unreferenced_claim_ids = (
+            known_claim_ids - set(referenced_claim_ids)
+        )
+
+        if unreferenced_claim_ids:
+            unreferenced = ", ".join(
+                sorted(unreferenced_claim_ids)
+            )
+            raise ValueError(
+                f"unreferenced draft claim: {unreferenced}"
+            )
         return self

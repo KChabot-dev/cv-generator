@@ -380,6 +380,10 @@ def test_draft_reports_unknown_plan_item_reference() -> None:
         header=draft.CandidateHeader(
             full_name="Kevin Chabot",
         ),
+        professional_summary=draft.ProfessionalSummary(
+            text="Test claim.",
+            claim_refs=["CLAIM-001"],
+        ),
         claims=[
             draft.DraftClaim(
                 id="CLAIM-001",
@@ -435,6 +439,10 @@ def test_draft_claim_cannot_exceed_plan_item_boundaries() -> None:
         ),
         header=draft.CandidateHeader(
             full_name="Kevin Chabot",
+        ),
+        professional_summary=draft.ProfessionalSummary(
+            text="Test claim.",
+            claim_refs=["CLAIM-001"],
         ),
         claims=[
             draft.DraftClaim(
@@ -501,6 +509,10 @@ def test_draft_claim_cannot_use_omitted_plan_item() -> None:
         ),
         header=draft.CandidateHeader(
             full_name="Kevin Chabot",
+        ),
+        professional_summary=draft.ProfessionalSummary(
+            text="Test claim.",
+            claim_refs=["CLAIM-001"],
         ),
         claims=[
             draft.DraftClaim(
